@@ -36,7 +36,7 @@ static void decode_command(char *cmd)
     // trim leading spaces
     cmd = nextchar(cmd);
 
-    if (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR)))
+    if (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR) - 1))
     {
         return;
     }
@@ -50,7 +50,7 @@ static void decode_command(char *cmd)
 
             cmd = nextchar(cmd + cmdsvr_commands[i].name_len);
 
-            while (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR)) == false)
+            while (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR) - 1) == false)
             {
                 cmd_args[arg_idx++] = cmd;
                 /* skip over valid ascii characters, terminate on space or string end */
@@ -64,7 +64,7 @@ static void decode_command(char *cmd)
 
             cmdsvr_commands[i].callback(arg_idx, cmd_args);
         }
-        else if (iscommand(cmd, "help", sizeof("help")))
+        else if (iscommand(cmd, "help", sizeof("help") - 1))
         {
             char name_buffer[CMDSVR_NAME_LENGTH_MAX];
 
