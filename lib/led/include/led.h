@@ -6,6 +6,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #define LED_STATUS_SUCCESS      0U
+#define LED_STATUS_UNKNOWN_CMD  1U
 
 namespace led
 {
@@ -17,7 +18,9 @@ namespace led
 
     uint32_t builtin_cmd(uint8_t argc, char *argv[]);
 
-    void ring_set(bool state);
+    void ring_set(uint8_t red, uint8_t green, uint8_t blue);
+
+    uint32_t ring_cmd(uint8_t argc, char *argv[]);
 }
 
 #endif /* _LED_H_ */

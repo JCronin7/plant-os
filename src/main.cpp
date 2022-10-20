@@ -15,6 +15,9 @@ void setup()
     cmdsvr::register_command("led",
                              "Toggle builtin led using \'led on/off/blink \'period / 2\'\'",
                              led::builtin_cmd);
+    cmdsvr::register_command("led_ring",
+                             "Toggle led ring using \'led_ring on/off\'",
+                             led::ring_cmd);
 
     //led::ring_set(false);
 

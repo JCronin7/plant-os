@@ -95,20 +95,45 @@ uint32_t led::builtin_cmd(uint8_t argc, char *argv[])
     {
         led::builtin_blink((uint32_t)atoi(argv[1]));
     }
+    else
+    {
+        return LED_STATUS_UNKNOWN_CMD;
+    }
 
     return LED_STATUS_SUCCESS;
 }
 
-void led::ring_set(bool state)
+void led::ring_set(uint8_t red, uint8_t green, uint8_t blue)
 {
-    while (true)
+    const uint32_t led_color = led_ring.Color(red, green, blue);
+    led_ring.clear();
+
+    for (uint8_t i = 0; i < LED_RING_PIXEL_COUNT; i++)
     {
-        led_ring.clear();
-        for (uint32_t i = 0; i < LED_RING_PIXEL_COUNT; i++)
-        {
-            led_ring.setPixelColor(i, led_ring.Color(0xFF, 0x50, 0x5B));
-            led_ring.show();
-            delay(50);
-        }
+        led_ring.setPixelColor(i, led_color);
     }
+
+    led_ring.show();
+}
+
+uint32_t led::ring_cmd(uint8_t argc, char *argv[])
+{
+    if (argc < 1)
+    {
+        return 1;
+    }
+
+    if (IS_COMMAND(argv[0], "on", sizeof("on") - 1) && argc == 4)
+    {
+        uint8_t red = atoi(argv[1]);
+        uint8_t green = atoi(argv[2]);
+        uint8_t blue = atoi(argv[3]);
+        led::ring_set(red, green, blue);
+    }
+    else if (IS_COMMAND(argv[0], "off", sizeof("off") - 1))
+    {
+        led::ring_set(0, 0, 0);
+    }
+
+    return LED_STATUS_SUCCESS;
 }
