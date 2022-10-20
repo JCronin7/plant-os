@@ -1,7 +1,7 @@
 #include <FreeRTOS_TEENSY4.h>
 #include <cmdsvr.h>
 #include <led.h>
-//#include <Adafruit_NeoPixel.h>
+#include <lsense.h>
 
 void setup()
 {
@@ -11,6 +11,7 @@ void setup()
 
     status &= led::init(11);
     status &= cmdsvr::init(&Serial, 115200);
+    status &= lsense::init();
 
     cmdsvr::register_command("led",
                              "Toggle builtin led using \'led on/off/blink \'period / 2\'\'",
@@ -18,8 +19,9 @@ void setup()
     cmdsvr::register_command("led_ring",
                              "Toggle led ring using \'led_ring on/off\'",
                              led::ring_cmd);
-
-    //led::ring_set(false);
+    cmdsvr::register_command("lsense",
+                             "Read sensor",
+                             lsense::cmd);
 
     if (status != pdPASS)
     {
