@@ -1,43 +1,22 @@
 #include <FreeRTOS_TEENSY4.h>
-#include <Adafruit_NeoPixel.h>
 #include <cmdsvr.h>
 #include <led.h>
-
-Adafruit_NeoPixel led_ring(24, 9, NEO_GRB + NEO_KHZ800);
+//#include <Adafruit_NeoPixel.h>
 
 void setup()
 {
-    portBASE_TYPE status;
+    portBASE_TYPE status = pdPASS;
 
     Serial.begin(115200);
-    led_ring.begin();
-    led_ring.setBrightness(10);
 
-    led::builtin_init();
-
-    cmdsvr::init(&Serial, 115200);
+    status &= led::init(11);
+    status &= cmdsvr::init(&Serial, 115200);
 
     cmdsvr::register_command("led",
-                             "Toggle builtin led using \'led <on/off>\'",
+                             "Toggle builtin led using \'led on/off/blink \'period / 2\'\'",
                              led::builtin_cmd);
 
-    // while (true)
-    // {
-    //     led_ring.clear();
-    //     for (int i = 0; i < 24; i++)
-    //     {
-    //         led_ring.setPixelColor(i, led_ring.Color(0xFF, 0x50, 0x5B));
-    //         led_ring.show();
-    //         delay(50);
-    //     }
-    // }
-
-    status = xTaskCreate(cmdsvr::background_thread,
-                         NULL,
-                         configMINIMAL_STACK_SIZE,
-                         NULL,
-                         3,
-                         NULL);
+    //led::ring_set(false);
 
     if (status != pdPASS)
     {
