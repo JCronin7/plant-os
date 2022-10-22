@@ -33,6 +33,8 @@ static void clearline(uint32_t line_size)
 
 static uint32_t decode_command(char *cmd)
 {
+    bool is_help = false;
+
     // trim leading spaces
     cmd = nextchar(cmd);
 
@@ -69,6 +71,8 @@ static uint32_t decode_command(char *cmd)
         {
             char name_buffer[CMDSVR_NAME_LENGTH_MAX];
 
+            is_help = true;
+
             strcpy(name_buffer, cmdsvr_commands[i].name);
 
             for (uint8_t j = cmdsvr_commands[i].name_len; j < CMDSVR_NAME_LENGTH_MAX; j++)
@@ -81,7 +85,11 @@ static uint32_t decode_command(char *cmd)
         }
     }
 
-    cmdsvr_serial_ptr->println("Unrecognized command, type \'help\' for options");
+    if (not is_help)
+    {
+        cmdsvr_serial_ptr->println("Unrecognized command, type \'help\' for options");
+    }
+
     return CMDSVR_STATUS_SUCCESS;
 }
 

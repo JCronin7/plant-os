@@ -3,6 +3,8 @@
 #include <led.h>
 #include <lsense.h>
 
+lsense::bh1750 light_sensor;
+
 void setup()
 {
     portBASE_TYPE status = pdPASS;
@@ -11,7 +13,7 @@ void setup()
 
     status &= led::init(11);
     status &= cmdsvr::init(&Serial, 115200);
-    status &= lsense::init();
+    status &= light_sensor.init(LOW, Wire);
 
     cmdsvr::register_command("led",
                              "Toggle builtin led using \'led on/off/blink \'period / 2\'\'",
@@ -21,7 +23,7 @@ void setup()
                              led::ring_cmd);
     cmdsvr::register_command("lsense",
                              "Read sensor",
-                             lsense::cmd);
+                             lsense::bh1750::cmd);
 
     if (status != pdPASS)
     {
