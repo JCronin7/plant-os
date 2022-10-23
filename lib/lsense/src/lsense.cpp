@@ -141,9 +141,11 @@ lsense::bh1750::bh1750(void)
 
 BaseType_t lsense::bh1750::init(bool address, I2CDriverWire &wire)
 {
+    BaseType_t status = pdFAIL;
+
     if (lsense::bh1750::instance_count == MAX_INSTANCES)
     {
-        return pdFAIL;
+        return status;
     }
 
     lsense::bh1750::instances[lsense::bh1750::instance_count++] = this;
@@ -156,16 +158,46 @@ BaseType_t lsense::bh1750::init(bool address, I2CDriverWire &wire)
     set_opcode(CONT_HRES_MD1);
     set_opcode(CHG_MTIME_HI(69));
     set_opcode(CHG_MTIME_LO(69));
-    set_opcode(CONT_HRES_MD1);
 
-    return pdTRUE;
+    status = xTaskCreate(measure_task,
+                         NULL,
+                         100 * configMINIMAL_STACK_SIZE,
+                         NULL,
+                         2,
+                         NULL);
+    return status;
+}
+
+float lsense::bh1750::measure(void)
+{
+    return (float)lsense::bh1750::read() / 1.2f;
+}
+
+void lsense::bh1750::measure_task(void *arg)
+{
+    TickType_t previous_wake = 0;
+    uint8_t sensor_idx = 0;//*(uint8_t*)arg;
+    lsense::bh1750  *inst_ptr = lsense::bh1750::instances[sensor_idx];
+
+    while (true)
+    {
+        vTaskDelayUntil(&previous_wake, 120);
+        inst_ptr->adc_data_buffer[0] = inst_ptr->read();
+    }
 }
 
 uint32_t lsense::bh1750::cmd(uint8_t argc, char *argv[])
 {
     if (argc < 1)
     {
-        return lsense::bh1750::instances[0]->read();
+        return lsense::bh1750::instances[0]->measure();
+    }
+
+    for (uint8_t i = 0; i < argc; i++)
+    {
+        uint8_t idx = atoi(argv[i]);
+        lsense::bh1750 *inst_ptr = lsense::bh1750::instances[idx];
+        return inst_ptr->measure();
     }
 
     return 0;

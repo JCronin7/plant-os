@@ -5,8 +5,8 @@
 #include <FreeRTOS_TEENSY4.h>
 #include <i2c_driver_wire.h>
 
-#define MAX_INSTANCES   5
-
+#define MAX_INSTANCES           1
+#define ADC_DATA_BUFFER_SIZE    1
 namespace lsense
 {
     class bh1750
@@ -15,6 +15,8 @@ namespace lsense
         static uint8_t instance_count;
 
         static bh1750 *instances[MAX_INSTANCES];
+
+        uint16_t adc_data_buffer[ADC_DATA_BUFFER_SIZE];
 
         I2CDriverWire *i2c_driver;
 
@@ -28,6 +30,10 @@ namespace lsense
         bh1750(void);
 
         BaseType_t init(bool address, I2CDriverWire& wire);
+
+        float measure(void);
+
+        static void measure_task(void *arg);
 
         static uint32_t cmd(uint8_t argc, char *argv[]);
 
