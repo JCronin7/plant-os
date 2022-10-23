@@ -31,14 +31,16 @@ static void clearline(uint32_t line_size)
     cmdsvr_serial_ptr->write('\r');
 }
 
-static void decode_command(char *cmd)
+static uint32_t decode_command(char *cmd)
 {
+    bool is_help = false;
+
     // trim leading spaces
     cmd = nextchar(cmd);
 
-    if (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR)))
+    if (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR) - 1))
     {
-        return;
+        return CMDSVR_STATUS_SUCCESS;
     }
 
     for (uint8_t i = 0; i < cmdsvr_registered_cmds; i++)
@@ -50,9 +52,10 @@ static void decode_command(char *cmd)
 
             cmd = nextchar(cmd + cmdsvr_commands[i].name_len);
 
-            while (iscommand(cmd, CMDSVR_TERMINATOR, sizeof(CMDSVR_TERMINATOR)) == false)
+            while (*cmd != '\n' && *cmd != '\0' && *cmd != '\r')
             {
                 cmd_args[arg_idx++] = cmd;
+
                 /* skip over valid ascii characters, terminate on space or string end */
                 while (*cmd > ' ')
                 {
@@ -62,11 +65,13 @@ static void decode_command(char *cmd)
                 cmd = nextchar(cmd);
             }
 
-            cmdsvr_commands[i].callback(arg_idx, cmd_args);
+            return cmdsvr_commands[i].callback(arg_idx, cmd_args);
         }
-        else if (iscommand(cmd, "help", sizeof("help")))
+        else if (iscommand(cmd, "help", sizeof("help") - 1))
         {
             char name_buffer[CMDSVR_NAME_LENGTH_MAX];
+
+            is_help = true;
 
             strcpy(name_buffer, cmdsvr_commands[i].name);
 
@@ -78,11 +83,14 @@ static void decode_command(char *cmd)
             cmdsvr_serial_ptr->write(name_buffer, CMDSVR_NAME_LENGTH_MAX);
             cmdsvr_serial_ptr->println(cmdsvr_commands[i].help);
         }
-        else
-        {
-            cmdsvr_serial_ptr->println("Unrecognized command, type \'help\' for options");
-        }
     }
+
+    if (not is_help)
+    {
+        cmdsvr_serial_ptr->println("Unrecognized command, type \'help\' for options");
+    }
+
+    return CMDSVR_STATUS_SUCCESS;
 }
 
 uint32_t cmdsvr::register_command(const char *name,
@@ -103,18 +111,28 @@ uint32_t cmdsvr::register_command(const char *name,
     return CMDSVR_STATUS_COMMAND_OVF;
 }
 
-void cmdsvr::init(usb_serial_class *serial_ptr,
+BaseType_t cmdsvr::init(usb_serial_class *serial_ptr,
                   uint32_t baudrate)
 {
+    BaseType_t status;
+    status = xTaskCreate(cmdsvr::background_thread,
+                         NULL,
+                         100 * configMINIMAL_STACK_SIZE,
+                         NULL,
+                         3,
+                         NULL);
     cmdsvr_serial_ptr = serial_ptr;
     cmdsvr_serial_ptr->begin(115200);
     print_prompt();
+
+    return status;
 }
 
 void cmdsvr::background_thread(void *arg)
 {
     char command_str[CMDSVR_HELP_LENGTH_MAX] = {0};
     TickType_t previous_wake = 0;
+    uint32_t ret;
     uint8_t bytes = 0;
 
     while (true)
@@ -127,9 +145,13 @@ void cmdsvr::background_thread(void *arg)
             case '\n':
                 command_str[bytes++] = '\0';
                 cmdsvr_serial_ptr->println();
-                decode_command(command_str);
+                /// @todo include bytes as param to decode_command
+                ret = decode_command(command_str);
                 bytes = 0;
-                // Move later
+                if (ret)
+                {
+                    cmdsvr_serial_ptr->println(ret);
+                }
                 print_prompt();
                 continue;
             case 0x08: // backspace
@@ -149,6 +171,6 @@ void cmdsvr::background_thread(void *arg)
             }
         }
 
-        vTaskDelayUntil(&previous_wake, 100 / portTICK_PERIOD_MS);
+        vTaskDelayUntil(&previous_wake, 10 / portTICK_PERIOD_MS);
     }
 }

@@ -8,8 +8,8 @@
 #define CMDSVR_NAME_LENGTH_MAX  32U
 #define CMDSVR_HELP_LENGTH_MAX  128U
 #define CMDSVR_PROMPT           "plant-os: $ "
+#define CMDSVR_PROMPT_SIZE      sizeof(CMDSVR_PROMPT)
 #define CMDSVR_TERMINATOR       "\r\0\n"
-#define CMDSVR_PROMPT_SIZE      (sizeof(CMDSVR_PROMPT))
 
 #define CMDSVR_STATUS_SUCCESS       0U
 #define CMDSVR_STATUS_COMMAND_OVF   1U
@@ -30,8 +30,8 @@ namespace cmdsvr
                               const char *help,
                               command_cb callback_func);
 
-    void init(usb_serial_class *serial,
-              uint32_t baudrate);
+    BaseType_t init(usb_serial_class *serial,
+                    uint32_t baudrate);
 
     void background_thread(void *arg);
 }
