@@ -1,9 +1,10 @@
 #include <led.h>
 #include <string.h>
 
+#define iscommand(str1, str2, str2_len)    ((strstr(str1, str2) == str1) && (*(str1 + str2_len) <= ' '))
+
 #define LED_RING_PIXEL_COUNT    24U
 
-#define IS_COMMAND(str1, str2, str2_len)    ((strstr(str1, str2) == str1) && (*(str1 + str2_len) <= ' '))
 #define SET_BUILTIN_LED(VAL) \
 do \
 { \
@@ -83,15 +84,15 @@ uint32_t led::builtin_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    if (IS_COMMAND(argv[0], "on", sizeof("on") - 1))
+    if (iscommand(argv[0], "on", sizeof("on") - 1))
     {
         led::builtin_set(HIGH);
     }
-    else if (IS_COMMAND(argv[0], "off", sizeof("off") - 1))
+    else if (iscommand(argv[0], "off", sizeof("off") - 1))
     {
         led::builtin_set(LOW);
     }
-    else if (IS_COMMAND(argv[0], "blink", sizeof("blink") - 1) && argc == 2)
+    else if (iscommand(argv[0], "blink", sizeof("blink") - 1) && argc == 2)
     {
         led::builtin_blink((uint32_t)atoi(argv[1]));
     }
@@ -123,14 +124,14 @@ uint32_t led::ring_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    if (IS_COMMAND(argv[0], "on", sizeof("on") - 1) && argc == 4)
+    if (iscommand(argv[0], "on", sizeof("on") - 1) && argc == 4)
     {
         uint8_t red = atoi(argv[1]);
         uint8_t green = atoi(argv[2]);
         uint8_t blue = atoi(argv[3]);
         led::ring_set(red, green, blue);
     }
-    else if (IS_COMMAND(argv[0], "off", sizeof("off") - 1))
+    else if (iscommand(argv[0], "off", sizeof("off") - 1))
     {
         led::ring_set(0, 0, 0);
     }

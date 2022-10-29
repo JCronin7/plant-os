@@ -1,6 +1,8 @@
 #include <light_sensor.h>
 #include <string.h>
 
+#define iscommand(str1, str2, str2_len)    ((strstr(str1, str2) == str1) && (*(str1 + str2_len) <= ' '))
+
 /**
  * @brief
  *  Power Down (0000_0000) - No active state.
@@ -95,7 +97,6 @@
 #define LSENSE_BH1750_ADDRESS_HIGH 0x5C
 
 #define LSENSE_BH1750_ADDRESS(PIN)          ((PIN) ? LSENSE_BH1750_ADDRESS_HIGH : LSENSE_BH1750_ADDRESS_LOW)
-#define IS_COMMAND(str1, str2, str2_len)    ((strstr(str1, str2) == str1) && (*(str1 + str2_len) <= ' '))
 
 using namespace light_sensor;
 
@@ -139,6 +140,7 @@ bh1750::bh1750(void)
 {
     i2c_driver = nullptr;
     i2c_address = 0xFF;
+    last_measure = 0;
 }
 
 BaseType_t bh1750::init(bool address, I2CDriverWire &wire)
@@ -155,52 +157,112 @@ BaseType_t bh1750::init(bool address, I2CDriverWire &wire)
     this->i2c_address = LSENSE_BH1750_ADDRESS(address);
     this->i2c_driver = &wire;
 
+    this->adc_buffer = xStreamBufferCreate(sizeof(uint16_t) * ADC_DATA_BUFFER_SIZE,
+                                           (size_t)1);
+
     i2c_driver->begin();
 
-    set_opcode(CONT_HRES_MD1);
-    set_opcode(CHG_MTIME_HI(69));
-    set_opcode(CHG_MTIME_LO(69));
+    set_mode(CONT_HRES_MD1);
+    set_measure_delay(69);
+
+    inst_idx = bh1750::instance_count - 1;
 
     status = xTaskCreate(measure_task,
                          NULL,
                          100 * configMINIMAL_STACK_SIZE,
-                         NULL,
+                         &(this->inst_idx),
                          2,
                          NULL);
     return status;
 }
 
-float bh1750::measure(void)
+uint8_t bh1750::set_power(uint8_t state)
 {
-    return (float)bh1750::read() / 1.2f;
+    this->power_state = state;
+    return set_opcode((state) ? POWER_ON : POWER_DOWN);
+}
+
+uint8_t bh1750::reset(void)
+{
+    return set_opcode(RESET);
+}
+
+uint8_t bh1750::set_mode(uint8_t mode)
+{
+    this->mode = mode;
+    return set_opcode(CONT_HRES_MD1);
+}
+
+uint8_t bh1750::set_measure_delay(uint8_t measure_delay)
+{
+    uint8_t ack;
+
+    this->measure_delay = measure_delay;
+    ack = set_opcode(CHG_MTIME_HI(measure_delay));
+    ack |= set_opcode(CHG_MTIME_LO(measure_delay));
+
+    return ack;
+}
+
+uint32_t bh1750::measure(void)
+{
+    const TickType_t current_tick = xTaskGetTickCount();
+
+    if (current_tick - last_measure >= measure_delay)
+    {
+        last_measure = current_tick;
+        return bh1750::read();
+    }
+
+    return 0.0f;
+}
+
+float bh1750::convert(uint16_t raw)
+{
+    return (float)raw / 1.2f;
 }
 
 void bh1750::measure_task(void *arg)
 {
+    const uint8_t sensor_idx = *(uint16_t*)arg;
     TickType_t previous_wake = 0;
-    uint8_t sensor_idx = 0;//*(uint8_t*)arg;
     bh1750  *inst_ptr = bh1750::instances[sensor_idx];
+    uint16_t data_raw;
 
     while (true)
     {
         vTaskDelayUntil(&previous_wake, 120);
-        inst_ptr->adc_data_buffer[0] = inst_ptr->read();
+        data_raw = inst_ptr->measure();
+        uint8_t bytes = xStreamBufferSend(inst_ptr->adc_buffer,
+                                          (uint8_t *)&data_raw,
+                                          sizeof(uint16_t),
+                                          0);
+        if (bytes != sizeof(uint8_t))
+        {
+            // error
+            (void)bytes;
+        }
     }
 }
 
 uint32_t bh1750::cmd(uint8_t argc, char *argv[])
 {
+    uint16_t data_raw;
+    bh1750 *inst_ptr;
+
     if (argc < 1)
     {
-        return bh1750::instances[0]->measure();
+        inst_ptr = bh1750::instances[0];
     }
 
     for (uint8_t i = 0; i < argc; i++)
     {
-        uint8_t idx = atoi(argv[i]);
-        bh1750 *inst_ptr = bh1750::instances[idx];
-        return inst_ptr->measure();
+        inst_ptr = bh1750::instances[atoi(argv[i])];
     }
 
-    return 0;
+    size_t bytes = xStreamBufferReceive(inst_ptr->adc_buffer,
+                                        (uint8_t *)&data_raw,
+                                        sizeof(uint16_t),
+                                        0);
+    return (bytes == sizeof(uint16_t)) ? data_raw : 0;
 }
