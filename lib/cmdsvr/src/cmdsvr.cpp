@@ -1,7 +1,7 @@
 #include <cmdsvr.h>
 #include <string.h>
 
-#define iscommand(str1, str2, str2_len)  (strstr(str1, str2) == str1 && *(str1 + str2_len) <= ' ')
+#define iscommand(str1, str2, str2_len)    ((strstr(str1, str2) == str1) && (*(str1 + str2_len) <= ' '))
 
 static uint32_t cmdsvr_registered_cmds = 0;
 
@@ -29,6 +29,11 @@ static void clearline(uint32_t line_size)
     }
 
     cmdsvr_serial_ptr->write('\r');
+}
+
+static void strclr(char *str, uint32_t len)
+{
+    while (len--) { *str++ = 0; }
 }
 
 static uint32_t decode_command(char *cmd)
@@ -147,6 +152,7 @@ void cmdsvr::background_thread(void *arg)
                 cmdsvr_serial_ptr->println();
                 /// @todo include bytes as param to decode_command
                 ret = decode_command(command_str);
+                strclr(command_str, bytes);
                 bytes = 0;
                 if (ret)
                 {
@@ -154,7 +160,7 @@ void cmdsvr::background_thread(void *arg)
                 }
                 print_prompt();
                 continue;
-            case 0x08: // backspace
+            case (char)0x08: // backspace
                 clearline(CMDSVR_PROMPT_SIZE + bytes);
                 print_prompt();
                 if (bytes > 0)
