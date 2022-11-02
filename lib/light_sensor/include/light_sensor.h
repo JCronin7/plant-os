@@ -2,63 +2,43 @@
 #define _LIGHT_SENSOR_H_
 
 #include <stdint.h>
+#ifdef teensy40
 #include <FreeRTOS_TEENSY4.h>
 #include <i2c_driver_wire.h>
+#endif
 #include <stream_buffer.h>
 
 #define MAX_INSTANCES           1
 #define ADC_DATA_BUFFER_SIZE    1024
 
-namespace light_sensor
+union Adc16Data_t
 {
-    class bh1750
+    uint16_t usData;
+    struct
     {
-    private:
-        static uint8_t instance_count;
+        uint8_t ucLo;
+        uint8_t ucHi;
+    } xBytes;
+};
 
-        static bh1750 *instances[MAX_INSTANCES];
+struct Bh1750Sensor_t
+{
+    StreamBufferHandle_t xAdcDataBufferHdl;
+    TickType_t xLastMeasure;
+    I2CDriverWire *xI2cDriver;
+    uint8_t xI2cAddress;
+    uint8_t ucPowerState;
+    uint8_t ucMode;
+    uint8_t ucMeasureDelay;
+    uint8_t ucInstIdx;
+};
 
-        StreamBufferHandle_t adc_buffer;
+BaseType_t xLightSensorinit(Bh1750Sensor_t *pxInst, I2CDriverWire *pxWire, bool ucAddr);
+uint8_t ucLightSensorSetPower(Bh1750Sensor_t *pxInst, uint8_t ucState);
+uint8_t ucLightSensorReset(Bh1750Sensor_t *pxInst);
+uint8_t ucLightSensorSetMode(Bh1750Sensor_t *pxInst, uint8_t ucMode);
+uint8_t ucLightSensorSetMeasureDelay(Bh1750Sensor_t *pxInst, uint8_t ucMeasureDelay);
+int32_t ulLightSensorMeasure(Bh1750Sensor_t *pxInst);
+uint32_t ulLightSensorCmdsvr(uint8_t argc, char *argv[]);
 
-        TickType_t last_measure;
-
-        I2CDriverWire *i2c_driver;
-
-        uint8_t i2c_address;
-
-        uint8_t power_state;
-
-        uint8_t mode;
-
-        uint8_t measure_delay;
-
-        uint8_t set_opcode(uint8_t op);
-
-        uint16_t read(void);
-
-    public:
-        uint8_t inst_idx;
-
-        bh1750(void);
-
-        BaseType_t init(bool address, I2CDriverWire& wire);
-
-        uint8_t set_power(uint8_t state);
-
-        uint8_t reset(void);
-
-        uint8_t set_mode(uint8_t mode);
-
-        uint8_t set_measure_delay(uint8_t measure_delay);
-
-        uint32_t measure(void);
-
-        float convert(uint16_t raw);
-
-        static void measure_task(void *arg);
-
-        static uint32_t cmd(uint8_t argc, char *argv[]);
-
-    };
-}
 #endif /* _LIGHT_SENSOR_H_ */
