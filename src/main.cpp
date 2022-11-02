@@ -17,21 +17,29 @@ void setup()
 
     vHalInit(115200);
 
-    status &= xLedBuiltinInit();
+    /* Command server */
     status &= xCmdsvrInit();
-    status &= vLedRingInit(LED_RING_DATA_IN_PIN);
-    status &= xLightSensorinit(&xLightSensor, &Wire, LOW);
-    status &= ulMoistureSensorInit(&xMoistSensor, 23);
 
+    /* Built-in LED */
+    status &= xLedBuiltinInit();
     xCmdsvrRegisterCmd("led",
                        "Toggle builtin led using \'led on/off/blink \'period / 2\'\'",
                        (CmdsvrCommandCb_t)ulLedBuiltinCmdsvr);
+
+    /* NeoPixel 24-pixel LED ring */
+    status &= vLedRingInit(LED_RING_DATA_IN_PIN);
     xCmdsvrRegisterCmd("led_ring",
                        "Toggle led ring using \'led_ring on/off\'",
                        (CmdsvrCommandCb_t)ulLedRingCmdsvr);
+
+    /* BH1750 Light intensity sensor */
+    status &= xLightSensorinit(&xLightSensor, &Wire, LOW);
     xCmdsvrRegisterCmd("light",
                        "Read sensor",
                        (CmdsvrCommandCb_t)ulLightSensorCmdsvr);
+
+    /* EK1940 Soil moisture sensor */
+    status &= ulMoistureSensorInit(&xMoistSensor, 23);
     xCmdsvrRegisterCmd("moist",
                        "Read sensor",
                        (CmdsvrCommandCb_t)ulMoistureSensorCmdsvr);

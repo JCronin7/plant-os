@@ -11,7 +11,7 @@
 static CmdsvrCommand_t pxCmdsvrCommands[CMDSVR_COMMANDS_MAX];
 static uint32_t ulCmdSvrRegisteredCmdCnt = 0;
 
-static uint32_t ulCmdsvrDecodeCommand(const char * pcCmdStr)
+static uint32_t ulCmdsvrDecodeCommand( const char * pcCmdStr )
 {
     const CmdsvrCommand_t *pxInst = NULL;
     bool ucHelpFlag = false;
@@ -37,12 +37,12 @@ static uint32_t ulCmdsvrDecodeCommand(const char * pcCmdStr)
 
             pcCmdStr = pcUtilNextChar(pcCmdStr + pxInst->ucCmdNameStrLen);
 
-            while (*pcCmdStr != '\0')
+            while ( *pcCmdStr != '\0' )
             {
                 pcCmdArgs[ulArgIdx++] = (char *)pcCmdStr;
 
                 /* skip over valid ascii characters, terminate on space or string end */
-                while (*pcCmdStr > ' ')
+                while ( *pcCmdStr > ' ' )
                 {
                     pcCmdStr++;
                 }
@@ -70,7 +70,7 @@ static uint32_t ulCmdsvrDecodeCommand(const char * pcCmdStr)
         }
     }
 
-    if (ucHelpFlag == false)
+    if ( ucHelpFlag == false )
     {
         xHalUartUsbSerialPrintln("Unrecognized command, type \'help\' for options");
     }
@@ -78,11 +78,11 @@ static uint32_t ulCmdsvrDecodeCommand(const char * pcCmdStr)
     return CMDSVR_STATUS_SUCCESS;
 }
 
-static CmdsvrAction_e xCmdsvrActionStateMachine(const char cInput)
+static CmdsvrAction_e xCmdsvrActionStateMachine( const char cInput )
 {
     static CmdsvrAction_e xCmdsvrAction = NO_INPUT;
 
-    switch (cInput)
+    switch ( cInput )
     {
     case '\r':
         xCmdsvrAction = CARRIAGE;
@@ -97,13 +97,13 @@ static CmdsvrAction_e xCmdsvrActionStateMachine(const char cInput)
         xCmdsvrAction = ESCAPE;
         break;
     default:
-        if (cInput == '[' && xCmdsvrAction == ESCAPE)
+        if ( cInput == '[' && xCmdsvrAction == ESCAPE )
         {
             xCmdsvrAction = ARROW;
             break;
         }
 
-        if (xCmdsvrAction == ARROW)
+        if ( xCmdsvrAction == ARROW )
         {
             xCmdsvrAction = (cInput <= 'D' && cInput >= 'A') ? cInput - 'A' + UP_ARROW : NO_INPUT;
             break;
@@ -116,9 +116,9 @@ static CmdsvrAction_e xCmdsvrActionStateMachine(const char cInput)
     return xCmdsvrAction;
 }
 
-uint32_t xCmdsvrRegisterCmd(const char *pcCmdName,
-                            const char *pcCmdHelp,
-                            CmdsvrCommandCb_t ulCallbackFunc)
+uint32_t xCmdsvrRegisterCmd( const char *pcCmdName,
+                             const char *pcCmdHelp,
+                             CmdsvrCommandCb_t ulCallbackFunc )
 {
     if ( ulCmdSvrRegisteredCmdCnt >= (uint32_t)CMDSVR_COMMANDS_MAX )
     {
@@ -158,9 +158,9 @@ void vCmdsvrBackgroundThread( void *arg )
     uint32_t ulCmdReturn;
     uint8_t ucBytes = 0;
 
-    while (true)
+    while ( true )
     {
-        if (xHalUartUsbSerialAvailable() > 0)
+        if ( xHalUartUsbSerialAvailable() > 0 )
         {
             const uint8_t ucNewChar = xHalUartUsbSerialGetChar();
 
@@ -171,7 +171,7 @@ void vCmdsvrBackgroundThread( void *arg )
                 pcCmdString[ucBytes++] = '\0';
                 xHalUartUsbSerialPutChar('\n');
                 ulCmdReturn = ulCmdsvrDecodeCommand(pcCmdString);
-                if (ulCmdReturn)
+                if ( ulCmdReturn )
                 {
                     xHalUartUsbSerialPutChar(ulCmdReturn);
                     xHalUartUsbSerialPutChar('\n');
@@ -183,7 +183,7 @@ void vCmdsvrBackgroundThread( void *arg )
 
             /* Rewrite entire line without previously entered character */
             case BACKSPACE:
-                if (ucBytes == 0)
+                if ( ucBytes == 0 )
                 {
                     continue;
                 }

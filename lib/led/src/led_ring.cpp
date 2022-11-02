@@ -21,7 +21,7 @@ static void vLedRingBackgroundTask( void *arg )
 {
     TickType_t xPreviousWake = 0;
 
-    while (true)
+    while ( true )
     {
         if ( xState == ON)
         {
@@ -38,7 +38,7 @@ static void vLedRingBackgroundTask( void *arg )
     }
 }
 
-BaseType_t vLedRingInit(uint8_t ucRingDataPin)
+BaseType_t vLedRingInit( uint8_t ucRingDataPin )
 {
     BaseType_t xStatus;
     xLedRing = Adafruit_NeoPixel(LED_RING_PIXEL_COUNT,
@@ -72,12 +72,12 @@ void vLedRingSet( bool ucState )
 
 uint32_t ulLedRingCmdsvr( uint8_t argc, char *argv[] )
 {
-    if (argc < 1)
+    if ( argc < 1 )
     {
         return 1;
     }
 
-    if (iscommand(argv[0], "on", sizeof("on") - 1) && argc == 4)
+    if ( iscommand(argv[0], "on", sizeof("on") - 1) && argc == 4 )
     {
         vLedRingSetColor(atoi(argv[1]),
                          atoi(argv[2]),
@@ -85,7 +85,7 @@ uint32_t ulLedRingCmdsvr( uint8_t argc, char *argv[] )
         xState = ON;
         vTaskResume(xLedBuiltinBlinkTaskHdl);
     }
-    else if (iscommand(argv[0], "off", sizeof("off") - 1))
+    else if ( iscommand(argv[0], "off", sizeof("off") - 1) )
     {
         xState = OFF;
         vTaskResume(xLedBuiltinBlinkTaskHdl);

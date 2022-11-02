@@ -33,12 +33,17 @@ struct Bh1750Sensor_t
     uint8_t ucInstIdx;
 };
 
-BaseType_t xLightSensorinit(Bh1750Sensor_t *pxInst, I2CDriverWire *pxWire, bool ucAddr);
-uint8_t ucLightSensorSetPower(Bh1750Sensor_t *pxInst, uint8_t ucState);
-uint8_t ucLightSensorReset(Bh1750Sensor_t *pxInst);
-uint8_t ucLightSensorSetMode(Bh1750Sensor_t *pxInst, uint8_t ucMode);
-uint8_t ucLightSensorSetMeasureDelay(Bh1750Sensor_t *pxInst, uint8_t ucMeasureDelay);
-int32_t ulLightSensorMeasure(Bh1750Sensor_t *pxInst);
-uint32_t ulLightSensorCmdsvr(uint8_t argc, char *argv[]);
+BaseType_t xLightSensorinit( Bh1750Sensor_t *pxInst,
+                             I2CDriverWire *pxWire,
+                             bool ucAddr );
+uint8_t ucLightSensorSetPower( Bh1750Sensor_t *pxInst,
+                               uint8_t ucState );
+uint8_t ucLightSensorReset( Bh1750Sensor_t *pxInst );
+uint8_t ucLightSensorSetMode( Bh1750Sensor_t *pxInst,
+                              uint8_t ucMode );
+uint8_t ucLightSensorSetMeasureDelay( Bh1750Sensor_t *pxInst,
+                                      uint8_t ucMeasureDelay );
+int32_t ulLightSensorMeasure( Bh1750Sensor_t *pxInst );
+uint32_t ulLightSensorCmdsvr( uint8_t argc, char *argv[] );
 
 #endif /* _LIGHT_SENSOR_H_ */

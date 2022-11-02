@@ -96,12 +96,13 @@
 #define LSENSE_BH1750_ADDRESS_HIGH  ( 0x5C )
 #define LSENSE_BH1750_LOOP_RATE     ( 120ul / portTICK_PERIOD_MS )
 
-#define LSENSE_BH1750_ADDRESS(PIN)  ((PIN) ? LSENSE_BH1750_ADDRESS_HIGH : LSENSE_BH1750_ADDRESS_LOW)
+#define LSENSE_BH1750_ADDRESS(PIN)  ( (PIN) ? LSENSE_BH1750_ADDRESS_HIGH : LSENSE_BH1750_ADDRESS_LOW )
 
-static Bh1750Sensor_t *xInstances[MAX_INSTANCES] = {nullptr};
+static Bh1750Sensor_t *xInstances[MAX_INSTANCES] = { nullptr };
 static uint32_t ulInstanceCount = 0;
 
-static uint8_t ucLightSensorSetOpcode(Bh1750Sensor_t *pxInst, uint8_t op)
+static uint8_t ucLightSensorSetOpcode( Bh1750Sensor_t *pxInst,
+                                       uint8_t op )
 {
     uint8_t ack;
 
@@ -112,7 +113,7 @@ static uint8_t ucLightSensorSetOpcode(Bh1750Sensor_t *pxInst, uint8_t op)
     return ack;
 }
 
-static uint16_t usLightSensorRead(Bh1750Sensor_t *pxInst)
+static uint16_t usLightSensorRead( Bh1750Sensor_t *pxInst )
 {
     Adc16Data_t xReadData;
 
@@ -131,7 +132,7 @@ static void vLightSensorMeasureTask( void *arg )
     TickType_t xPreviousWake = 0;
     uint16_t usData;
 
-    while (true)
+    while ( true )
     {
         vTaskDelayUntil(&xPreviousWake, LSENSE_BH1750_LOOP_RATE);
         usData = ulLightSensorMeasure(pxInst);
@@ -139,7 +140,7 @@ static void vLightSensorMeasureTask( void *arg )
                                           (uint8_t *)&usData,
                                           sizeof(uint16_t),
                                           0);
-        if (bytes != sizeof(uint8_t))
+        if ( bytes != sizeof(uint8_t) )
         {
             // error
             (void)bytes;
@@ -147,17 +148,19 @@ static void vLightSensorMeasureTask( void *arg )
     }
 }
 
-static float xLightSensorConvert(uint16_t usData)
+static float xLightSensorConvert( uint16_t usData )
 {
     return (float)usData / 1.2f;
 }
 
-BaseType_t xLightSensorinit(Bh1750Sensor_t *pxInst, I2CDriverWire *pxWire, bool ucAddr)
+BaseType_t xLightSensorinit( Bh1750Sensor_t *pxInst,
+                             I2CDriverWire *pxWire,
+                             bool ucAddr )
 {
     BaseType_t xStatus = pdFAIL;
     const uint32_t ulStreamBufferSize = sizeof(uint16_t) * ADC_DATA_BUFFER_SIZE;
 
-    if (ulInstanceCount == MAX_INSTANCES)
+    if ( ulInstanceCount == MAX_INSTANCES )
     {
         return xStatus;
     }
@@ -189,25 +192,28 @@ BaseType_t xLightSensorinit(Bh1750Sensor_t *pxInst, I2CDriverWire *pxWire, bool 
     return xStatus;
 }
 
-uint8_t ucLightSensorSetPower(Bh1750Sensor_t *pxInst, uint8_t ucState)
+uint8_t ucLightSensorSetPower( Bh1750Sensor_t *pxInst,
+                               uint8_t ucState )
 {
     pxInst->ucPowerState = ucState;
     return ucLightSensorSetOpcode(pxInst,
                                  (ucState) ? POWER_ON : POWER_DOWN);
 }
 
-uint8_t ucLightSensorReset(Bh1750Sensor_t *pxInst)
+uint8_t ucLightSensorReset( Bh1750Sensor_t *pxInst )
 {
     return ucLightSensorSetOpcode(pxInst, RESET);
 }
 
-uint8_t ucLightSensorSetMode(Bh1750Sensor_t *pxInst, uint8_t ucMode)
+uint8_t ucLightSensorSetMode( Bh1750Sensor_t *pxInst,
+                              uint8_t ucMode )
 {
     pxInst->ucMode = ucMode;
     return ucLightSensorSetOpcode(pxInst, ucMode);
 }
 
-uint8_t ucLightSensorSetMeasureDelay(Bh1750Sensor_t *pxInst, uint8_t ucMeasureDelay)
+uint8_t ucLightSensorSetMeasureDelay( Bh1750Sensor_t *pxInst,
+                                      uint8_t ucMeasureDelay )
 {
     uint8_t ack;
 
@@ -218,11 +224,11 @@ uint8_t ucLightSensorSetMeasureDelay(Bh1750Sensor_t *pxInst, uint8_t ucMeasureDe
     return ack;
 }
 
-int32_t ulLightSensorMeasure(Bh1750Sensor_t *pxInst)
+int32_t ulLightSensorMeasure( Bh1750Sensor_t *pxInst )
 {
     const TickType_t xCurrentTick = xTaskGetTickCount();
 
-    if (xCurrentTick - pxInst->xLastMeasure >= pxInst->ucMeasureDelay)
+    if ( (xCurrentTick - pxInst->xLastMeasure) >= pxInst->ucMeasureDelay )
     {
         pxInst->xLastMeasure = xCurrentTick;
         return usLightSensorRead(pxInst);
@@ -231,26 +237,26 @@ int32_t ulLightSensorMeasure(Bh1750Sensor_t *pxInst)
     return -1;
 }
 
-uint32_t ulLightSensorCmdsvr(uint8_t argc, char *argv[])
+uint32_t ulLightSensorCmdsvr( uint8_t argc, char *argv[] )
 {
     char cBuffer[sizeof(uint16_t) * ADC_DATA_BUFFER_SIZE];
-    uint16_t usData;
+    int32_t usData;
     Bh1750Sensor_t *pxInst;
 
-    if (argc < 1)
+    if ( argc < 1 )
     {
         pxInst = xInstances[0];
         do
         {
             usData = ulLightSensorMeasure(pxInst);
-        } while (usData < 0);
-        sprintf(cBuffer, "%d       \n", usData);
+        } while ( usData < 0 );
+        sprintf(cBuffer, "%ld       \n", usData);
         xHalUartUsbSerialPrint(cBuffer);
         return 0;
     }
 
 #if 0
-    if (iscommand(argv[0], "stream", sizeof("stream") - 1))
+    if ( iscommand(argv[0], "stream", sizeof("stream") - 1) )
     {
         size_t xBytes = xStreamBufferReceive(pxInst->xAdcDataBufferHdl,
                                              cBuffer,
@@ -261,14 +267,14 @@ uint32_t ulLightSensorCmdsvr(uint8_t argc, char *argv[])
     }
 #endif
 
-    for (uint8_t i = 0; i < argc; i++)
+    for ( uint8_t i = 0; i < argc; i++ )
     {
         pxInst = xInstances[atoi(argv[i])];
         do
         {
             usData = ulLightSensorMeasure(pxInst);
-        } while (usData < 0);
-        sprintf(cBuffer, "%d       \n", usData);
+        } while ( usData < 0 );
+        sprintf(cBuffer, "%ld       \n", usData);
         xHalUartUsbSerialPrint(cBuffer);
     }
 

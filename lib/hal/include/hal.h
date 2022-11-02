@@ -75,9 +75,9 @@
 extern "C" {
 #endif
 
-void vHalInit(uint32_t baudrate);
-size_t xHalUartUsbSerialPrint(const void * const pvStr);
-size_t xHalUartUsbSerialPrintln(const void * const pvStr);
+void vHalInit( uint32_t baudrate );
+size_t xHalUartUsbSerialPrint( const void * const pvStr );
+size_t xHalUartUsbSerialPrintln( const void * const pvStr );
 
 #ifdef __cplusplus
 }

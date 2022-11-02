@@ -1,6 +1,6 @@
 #include <hal.h>
 
-void vHalInit(uint32_t ulBaudrate)
+void vHalInit( uint32_t ulBaudrate )
 {
     const uint32_t ulCurrentSysTick = systick_millis_count;
 

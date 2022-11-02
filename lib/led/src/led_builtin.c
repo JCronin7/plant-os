@@ -9,25 +9,25 @@
         vPortEnterCritical();             \
         digitalWrite(LED_BUILTIN, (VAL)); \
         vPortExitCritical();              \
-    } while (0);
+    } while ( 0 );
 
 static uint32_t ulLedBuiltinBlinkFreq = 0;
 static TaskHandle_t xLedBuiltinBlinkTaskHdl = NULL;
 
-static void vLedBuiltinBlinkTask(void *arg)
+static void vLedBuiltinBlinkTask( void *arg )
 {
     TickType_t xPreviousWake = 0;
     static uint32_t ulCount = 0;
     static bool ucState = false;
 
-    while (true)
+    while ( true )
     {
-        if (ulLedBuiltinBlinkFreq == 0)
+        if ( ulLedBuiltinBlinkFreq == 0 )
         {
             vTaskSuspend(xLedBuiltinBlinkTaskHdl);
         }
 
-        if (ulCount++ >= ulLedBuiltinBlinkFreq)
+        if ( ulCount++ >= ulLedBuiltinBlinkFreq )
         {
             ulCount = 0;
             vLedBuiltinSetLed(ucState);
@@ -38,7 +38,7 @@ static void vLedBuiltinBlinkTask(void *arg)
     }
 }
 
-BaseType_t xLedBuiltinInit(void)
+BaseType_t xLedBuiltinInit( void )
 {
     BaseType_t xStatus;
 
@@ -56,7 +56,7 @@ BaseType_t xLedBuiltinInit(void)
     return xStatus;
 }
 
-void vLedBuiltinSet(bool ucState)
+void vLedBuiltinSet( bool ucState )
 {
     vTaskSuspend(xLedBuiltinBlinkTaskHdl);
     vLedBuiltinSetLed(ucState);
@@ -68,7 +68,7 @@ void vLedBuiltinBlink(uint32_t ulFrequency)
     vTaskResume(xLedBuiltinBlinkTaskHdl);
 }
 
-uint32_t ulLedBuiltinCmdsvr(uint8_t argc, char *argv[])
+uint32_t ulLedBuiltinCmdsvr( uint8_t argc, char *argv[] )
 {
     if (argc < 1)
     {

@@ -16,9 +16,11 @@ typedef struct Ek1940Sensor
     uint8_t ucInstIdx;
 } Ek1940Sensor_t;
 
-uint32_t ulMoistureSensorRead(Ek1940Sensor_t *pxInst);
-BaseType_t ulMoistureSensorInit(Ek1940Sensor_t *pxInst, uint8_t ucDataOut);
-uint32_t ulMoistureSensorCmdsvr(uint8_t argc, char *argv[]);
+uint32_t ulMoistureSensorRead( Ek1940Sensor_t *pxInst );
+BaseType_t ulMoistureSensorInit( Ek1940Sensor_t *pxInst,
+                                 uint8_t ucDataOut );
+uint32_t ulMoistureSensorCmdsvr( uint8_t argc,
+                                 char *argv[] );
 
 #ifdef __cplusplus
 }
