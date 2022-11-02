@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "io.h": "c",
+        "avr_emulation.h": "c",
+        "usb_serial.h": "c",
+        "adafruit_neopixel.h": "c",
+        "freertos_teensy4.h": "c",
+        "i2c_driver_wire.h": "c",
+        "arduino.h": "c"
+    }
+}

@@ -4,36 +4,52 @@
 #include <stdint.h>
 #include <FreeRTOS_TEENSY4.h>
 
-#define CMDSVR_COMMANDS_MAX     64U
-#define CMDSVR_NAME_LENGTH_MAX  32U
-#define CMDSVR_HELP_LENGTH_MAX  128U
-#define CMDSVR_PROMPT           "plant-os: $ "
-#define CMDSVR_PROMPT_SIZE      sizeof(CMDSVR_PROMPT)
-#define CMDSVR_TERMINATOR       "\r\0\n"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define CMDSVR_STATUS_SUCCESS       0U
-#define CMDSVR_STATUS_COMMAND_OVF   1U
+#define CMDSVR_COMMANDS_MAX         ( 64U )
+#define CMDSVR_NAME_LENGTH_MAX      ( 32U )
+#define CMDSVR_HELP_LENGTH_MAX      ( 128U )
+#define CMDSVR_PROMPT               ( "plant-os: $ " )
+#define CMDSVR_PROMPT_SIZE          ( sizeof(CMDSVR_PROMPT) )
 
-namespace cmdsvr
+#define CMDSVR_STATUS_SUCCESS       ( 0U )
+#define CMDSVR_STATUS_COMMAND_OVF   ( 1U )
+
+typedef uint32_t ( *CmdsvrCommandCb_t )( uint8_t, char *[] );
+
+typedef struct CmdsvrCommand
 {
-    typedef uint32_t (*command_cb)(uint8_t, char *[]);
+    char pcCmdName[CMDSVR_NAME_LENGTH_MAX];
+    char pcCmdHelp[CMDSVR_HELP_LENGTH_MAX];
+    CmdsvrCommandCb_t ulCallbackFunc;
+    uint8_t ucCmdNameStrLen;
+} CmdsvrCommand_t;
 
-    struct command
-    {
-        char name[CMDSVR_NAME_LENGTH_MAX];
-        char help[CMDSVR_HELP_LENGTH_MAX];
-        command_cb callback;
-        uint8_t name_len;
-    };
+typedef enum CmdsvrAction
+{
+    CHARACTER = 0,  /* a-z, A-Z, 0-9 and space */
+    ESCAPE,         /* Arrow key */
+    BACKSPACE,      /* Backspace key */
+    CARRIAGE,       /* Carriage return */
+    NEWLINE,        /* New line */
+    ENTER,          /* Enter key */
+    ARROW,          /* Arrow key, '[' character after esc */
+    UP_ARROW,       /* Up arrow key */
+    DOWN_ARROW,     /* Down arrow key */
+    RIGHT_ARROW,    /* Right arrow key */
+    LEFT_ARROW,     /* Left arrow key */
+    NO_INPUT,
+} CmdsvrAction_e;
 
-    uint32_t register_command(const char *name,
-                              const char *help,
-                              command_cb callback_func);
+uint32_t xCmdsvrRegisterCmd( const char * const pcCmdName,
+                             const char * const pcCmdHelp,
+                             CmdsvrCommandCb_t ulCallbackFunc );
+BaseType_t xCmdsvrInit( void );
+void vCmdsvrBackgroundThread( void *arg );
 
-    BaseType_t init(usb_serial_class *serial,
-                    uint32_t baudrate);
-
-    void background_thread(void *arg);
+#ifdef __cplusplus
 }
-
+#endif
 #endif /* _CMDSVR_H_ */

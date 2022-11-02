@@ -4,18 +4,23 @@
 #include <stdint.h>
 #include <FreeRTOS_TEENSY4.h>
 
-namespace moist_sensor
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MOISTURE_SENSOR_MAX_INSTANCES ( 1 )
+
+typedef struct Ek1940Sensor
 {
-    class ek1940
-    {
-    private:
-        static int read(void);
+    uint8_t ucDataOut;
+    uint8_t ucInstIdx;
+} Ek1940Sensor_t;
 
-    public:
-        static BaseType_t init(void);
+uint32_t ulMoistureSensorRead(Ek1940Sensor_t *pxInst);
+BaseType_t ulMoistureSensorInit(Ek1940Sensor_t *pxInst, uint8_t ucDataOut);
+uint32_t ulMoistureSensorCmdsvr(uint8_t argc, char *argv[]);
 
-        static uint32_t cmd(uint8_t argc, char *argv[]);
-    };
+#ifdef __cplusplus
 }
-
+#endif
 #endif /* _MOIST_SENSOR_H_ */
