@@ -106,9 +106,9 @@ static uint8_t ucLightSensorSetOpcode( Bh1750Sensor_t *pxInst,
 {
     uint8_t ack;
 
-    pxInst->xI2cDriver->beginTransmission(pxInst->xI2cAddress);
-    pxInst->xI2cDriver->write(op);
-    ack = pxInst->xI2cDriver->endTransmission();
+    vHalI2cBeginTransmission(pxInst->xI2cAddress);
+    xHalI2cWrite(op);
+    ack = xHalI2cEndTransmission();
 
     return ack;
 }
@@ -117,10 +117,10 @@ static uint16_t usLightSensorRead( Bh1750Sensor_t *pxInst )
 {
     Adc16Data_t xReadData;
 
-    pxInst->xI2cDriver->requestFrom(pxInst->xI2cAddress,
-                                    sizeof(uint16_t));
-    xReadData.xBytes.ucHi = pxInst->xI2cDriver->read();
-    xReadData.xBytes.ucLo = pxInst->xI2cDriver->read();
+    xHalI2cRequestFrom(pxInst->xI2cAddress,
+                       sizeof(uint16_t));
+    xReadData.xBytes.ucHi = xHalI2cRead();
+    xReadData.xBytes.ucLo = xHalI2cRead();
 
     return xReadData.usData;
 }
@@ -154,7 +154,7 @@ static float xLightSensorConvert( uint16_t usData )
 }
 
 BaseType_t xLightSensorinit( Bh1750Sensor_t *pxInst,
-                             I2CDriverWire *pxWire,
+                             //I2CDriverWire *pxWire,
                              bool ucAddr )
 {
     BaseType_t xStatus = pdFAIL;
@@ -168,13 +168,13 @@ BaseType_t xLightSensorinit( Bh1750Sensor_t *pxInst,
     xInstances[ulInstanceCount] = pxInst;
 
     pxInst->xI2cAddress = LSENSE_BH1750_ADDRESS(ucAddr);
-    pxInst->xI2cDriver = pxWire;
+    //pxInst->xI2cDriver = pxWire;
     pxInst->ucInstIdx = ulInstanceCount;
 
     pxInst->xAdcDataBufferHdl = xStreamBufferCreate(ulStreamBufferSize,
                                                     (size_t)1);
 
-    pxInst->xI2cDriver->begin();
+    //pxInst->xI2cDriver->begin();
 
     ucLightSensorSetMode(pxInst, CONT_HRES_MD1);
     ucLightSensorSetMeasureDelay(pxInst, 69);
@@ -231,7 +231,8 @@ int32_t ulLightSensorMeasure( Bh1750Sensor_t *pxInst )
     if ( (xCurrentTick - pxInst->xLastMeasure) >= pxInst->ucMeasureDelay )
     {
         pxInst->xLastMeasure = xCurrentTick;
-        return usLightSensorRead(pxInst);
+        uint16_t usData = usLightSensorRead(pxInst);
+        return (int32_t)xLightSensorConvert(usData);
     }
 
     return -1;

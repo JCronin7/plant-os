@@ -2,84 +2,91 @@
 #define _HAL_H_
 
 #include <stdint.h>
-#include <usb_serial.h>
+#ifdef __cplusplus
+#define EXTERNC extern "C"
+#else
+#define EXTERNC
+#endif
 
 /**
  * @brief
  *  Reset Serial module
  *
  */
-#define vHalUartUsbSerialReset( )               ( usb_serial_reset() )
+EXTERNC void vHalUartUsbSerialReset( void );
 
 /**
  * @brief
  *
  */
-#define vHalUartUsbSerialConfig( )              ( usb_serial_configure() )
+EXTERNC void vHalUartUsbSerialConfig( void );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialGetChar( )             ( usb_serial_getchar() )
+EXTERNC char xHalUartUsbSerialGetChar( void );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialPeekChar( )            ( usb_serial_peekchar() )
+EXTERNC char xHalUartUsbSerialPeekChar( void );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialAvailable( )           ( usb_serial_available() )
+EXTERNC uint32_t xHalUartUsbSerialAvailable( void );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialRead(buffer, size)     ( usb_serial_read(buffer, size) )
+EXTERNC uint32_t xHalUartUsbSerialRead( char *ucBuffer, uint32_t ulSize );
 
 /**
  * @brief
  *
  */
-#define vHalUartUsbSerialFlushInput( )          ( usb_serial_flush_input() )
+EXTERNC void vHalUartUsbSerialFlushInput( void );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialPutChar(c)             ( usb_serial_putchar(c) )
+EXTERNC uint32_t xHalUartUsbSerialPutChar( char ucByte );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialWrite(buffer, size)    ( usb_serial_write(buffer, size) )
+EXTERNC uint32_t xHalUartUsbSerialWrite( char *ucBuffer, uint32_t ulSize );
 
 /**
  * @brief
  *
  */
-#define xHalUartUsbSerialWriteBufferFree()      ( usb_serial_write_buffer_free() )
+EXTERNC uint32_t xHalUartUsbSerialWriteBufferFree( void );
 
 /**
  * @brief
  *
  */
-#define vHalUartUsbSerialFlushOutput()          ( usb_serial_flush_output() )
+EXTERNC void vHalUartUsbSerialFlushOutput( void );
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+EXTERNC void vHalI2cBeginTransmission( uint8_t ucByte );
+EXTERNC uint8_t xHalI2cEndTransmission( void );
+EXTERNC uint32_t xHalI2cWrite( uint8_t ucByte );
+EXTERNC uint8_t xHalI2cRequestFrom( uint8_t ucAddress,
+                                    uint32_t ulBytes);
+EXTERNC uint8_t xHalI2cRead( void );
+EXTERNC void vHalI2cBegin( void );
 
-void vHalInit( uint32_t baudrate );
-size_t xHalUartUsbSerialPrint( const void * const pvStr );
-size_t xHalUartUsbSerialPrintln( const void * const pvStr );
+EXTERNC void vHalInit( uint32_t baudrate );
+EXTERNC uint32_t xHalUartUsbSerialPrint( const void * const pvStr );
+EXTERNC uint32_t xHalUartUsbSerialPrintln( const void * const pvStr );
 
-#ifdef __cplusplus
-}
-#endif
+#undef EXTERNC
+
 #endif /* _HAL_H_ */
