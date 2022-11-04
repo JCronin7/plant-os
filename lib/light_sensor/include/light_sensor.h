@@ -2,11 +2,15 @@
 #define _LIGHT_SENSOR_H_
 
 #include <stdint.h>
-#ifdef teensy40
+#if defined ( teensy40 )
 #include <FreeRTOS_TEENSY4.h>
-#include <i2c_driver_wire.h>
+#elif defined ( mkrwifi1010 )
+#include <FreeRTOS_SAMD21.h>
+#else
+#error "Unsupported hardware platform"
 #endif
 #include <stream_buffer.h>
+#include <hal.h>
 
 #define MAX_INSTANCES           1
 #define ADC_DATA_BUFFER_SIZE    1024
@@ -25,7 +29,7 @@ struct Bh1750Sensor_t
 {
     StreamBufferHandle_t xAdcDataBufferHdl;
     TickType_t xLastMeasure;
-    I2CDriverWire *xI2cDriver;
+    //I2CDriverWire *xI2cDriver;
     uint8_t xI2cAddress;
     uint8_t ucPowerState;
     uint8_t ucMode;
@@ -34,7 +38,7 @@ struct Bh1750Sensor_t
 };
 
 BaseType_t xLightSensorinit( Bh1750Sensor_t *pxInst,
-                             I2CDriverWire *pxWire,
+                             //I2CDriverWire *pxWire,
                              bool ucAddr );
 uint8_t ucLightSensorSetPower( Bh1750Sensor_t *pxInst,
                                uint8_t ucState );

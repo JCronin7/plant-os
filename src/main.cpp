@@ -1,4 +1,12 @@
+#if defined ( teensy40 )
 #include <FreeRTOS_TEENSY4.h>
+#elif defined ( mkrwifi1010 )
+#include <FreeRTOS_SAMD21.h>
+#include <Arduino.h>
+#include <Wire.h>
+#else
+#error "Unsupported hardware platform"
+#endif
 #include <light_sensor.h>
 #include <moist_sensor.h>
 #include <led_ring.h>
@@ -33,7 +41,7 @@ void setup()
                        (CmdsvrCommandCb_t)ulLedRingCmdsvr);
 
     /* BH1750 Light intensity sensor */
-    status &= xLightSensorinit(&xLightSensor, &Wire, LOW);
+    status &= xLightSensorinit(&xLightSensor, /* &Wire, */ LOW);
     xCmdsvrRegisterCmd("light",
                        "Read sensor",
                        (CmdsvrCommandCb_t)ulLightSensorCmdsvr);

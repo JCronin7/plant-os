@@ -6,6 +6,11 @@
         "adafruit_neopixel.h": "c",
         "freertos_teensy4.h": "c",
         "i2c_driver_wire.h": "c",
-        "arduino.h": "c"
+        "arduino.h": "c",
+        "pins_arduino.h": "c",
+        "wprogram.h": "c",
+        "hardwareserial.h": "c",
+        "wiring.h": "c",
+        "wire.h": "c"
     }
 }
