@@ -11,6 +11,9 @@
         "wprogram.h": "c",
         "hardwareserial.h": "c",
         "wiring.h": "c",
-        "wire.h": "c"
+        "wire.h": "c",
+        "hal.h": "c",
+        "cmdsvr.h": "c",
+        "queue.h": "c"
     }
 }

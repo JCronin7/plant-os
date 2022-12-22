@@ -2,91 +2,21 @@
 #define _HAL_H_
 
 #include <stdint.h>
-#ifdef __cplusplus
-#define EXTERNC extern "C"
-#else
-#define EXTERNC
-#endif
 
-/**
- * @brief
- *  Reset Serial module
- *
- */
-EXTERNC void vHalUartUsbSerialReset( void );
+void flash_init(void);
+uint32_t flash_size(void);
+bool flash_write(uint32_t base,
+                 uint32_t size,
+                 const void *bytes);
+bool flash_read(uint32_t base,
+                uint32_t size,
+                void *bytes);
 
-/**
- * @brief
- *
- */
-EXTERNC void vHalUartUsbSerialConfig( void );
-
-/**
- * @brief
- *
- */
-EXTERNC char xHalUartUsbSerialGetChar( void );
-
-/**
- * @brief
- *
- */
-EXTERNC char xHalUartUsbSerialPeekChar( void );
-
-/**
- * @brief
- *
- */
-EXTERNC uint32_t xHalUartUsbSerialAvailable( void );
-
-/**
- * @brief
- *
- */
-EXTERNC uint32_t xHalUartUsbSerialRead( char *ucBuffer, uint32_t ulSize );
-
-/**
- * @brief
- *
- */
-EXTERNC void vHalUartUsbSerialFlushInput( void );
-
-/**
- * @brief
- *
- */
-EXTERNC uint32_t xHalUartUsbSerialPutChar( char ucByte );
-
-/**
- * @brief
- *
- */
-EXTERNC uint32_t xHalUartUsbSerialWrite( char *ucBuffer, uint32_t ulSize );
-
-/**
- * @brief
- *
- */
-EXTERNC uint32_t xHalUartUsbSerialWriteBufferFree( void );
-
-/**
- * @brief
- *
- */
-EXTERNC void vHalUartUsbSerialFlushOutput( void );
-
-EXTERNC void vHalI2cBeginTransmission( uint8_t ucByte );
-EXTERNC uint8_t xHalI2cEndTransmission( void );
-EXTERNC uint32_t xHalI2cWrite( uint8_t ucByte );
-EXTERNC uint8_t xHalI2cRequestFrom( uint8_t ucAddress,
-                                    uint32_t ulBytes);
-EXTERNC uint8_t xHalI2cRead( void );
-EXTERNC void vHalI2cBegin( void );
-
-EXTERNC void vHalInit( uint32_t baudrate );
-EXTERNC uint32_t xHalUartUsbSerialPrint( const void * const pvStr );
-EXTERNC uint32_t xHalUartUsbSerialPrintln( const void * const pvStr );
-
-#undef EXTERNC
+uint32_t flast_wr_cmd(uint8_t argc,
+                      char *argv[]);
+uint32_t flast_rd_cmd(uint8_t argc,
+                      char *argv[]);
+uint32_t flash_print_cmd(uint8_t argc,
+                         char *argv[]);
 
 #endif /* _HAL_H_ */

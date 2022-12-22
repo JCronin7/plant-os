@@ -1,7 +1,10 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#define LED_RING_DATA_IN_PIN        ( 11U )
-#define LIGHT_SENSOR_BUFFER_SIZE    ( 1024U )
+#define INTERFACE_TASK_PRIORITY (1U)
+#define INTERFACE_TASK_STACK    (3 * configMINIMAL_STACK_SIZE)
+
+#define CMDSVR_TASK_PRIORITY (2U)
+#define CMDSVR_TASK_STACK    (configMINIMAL_STACK_SIZE)
 
 #endif /* _CONFIG_H_ */
