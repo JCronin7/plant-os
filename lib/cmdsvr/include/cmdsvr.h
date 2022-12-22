@@ -2,60 +2,40 @@
 #define _CMDSVR_H_
 
 #include <stdint.h>
-#if defined ( teensy40 )
-#include <FreeRTOS_TEENSY4.h>
-#elif defined ( mkrwifi1010 )
 #include <FreeRTOS_SAMD21.h>
-#else
-#error "Unsupported hardware platform"
-#endif
+#include <transport.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define CMDSVR_NAME_LENGTH_MAX  32U
+#define CMDSVR_HELP_LENGTH_MAX  64U
 
-#define CMDSVR_COMMANDS_MAX         ( 64U )
-#define CMDSVR_NAME_LENGTH_MAX      ( 32U )
-#define CMDSVR_HELP_LENGTH_MAX      ( 128U )
-#define CMDSVR_PROMPT               ( "plant-os: $ " )
-#define CMDSVR_PROMPT_SIZE          ( sizeof(CMDSVR_PROMPT) )
+#define CMDSVR_STATUS_SUCCESS       0U
+#define CMDSVR_STATUS_COMMAND_OVF   1U
 
-#define CMDSVR_STATUS_SUCCESS       ( 0U )
-#define CMDSVR_STATUS_COMMAND_OVF   ( 1U )
+/** Callback function type */
+typedef uint32_t ( *cmdsvr_cmd_cb_t )( uint8_t, char *[] );
 
-typedef uint32_t ( *CmdsvrCommandCb_t )( uint8_t, char *[] );
-
-typedef struct CmdsvrCommand
+/** Message payload structure */
+typedef struct cmdsvr_cmd
 {
-    char pcCmdName[CMDSVR_NAME_LENGTH_MAX];
-    char pcCmdHelp[CMDSVR_HELP_LENGTH_MAX];
-    CmdsvrCommandCb_t ulCallbackFunc;
-    uint8_t ucCmdNameStrLen;
-} CmdsvrCommand_t;
+    char name[CMDSVR_NAME_LENGTH_MAX];
+    uint8_t argc;
+    char *argv[];
+} cmdsvr_cmd_t;
 
-typedef enum CmdsvrAction
+/** Command struct */
+typedef struct cmdsvr_cmd_inst
 {
-    CHARACTER = 0,  /* a-z, A-Z, 0-9 and space */
-    ESCAPE,         /* Arrow key */
-    BACKSPACE,      /* Backspace key */
-    CARRIAGE,       /* Carriage return */
-    NEWLINE,        /* New line */
-    ENTER,          /* Enter key */
-    ARROW,          /* Arrow key, '[' character after esc */
-    UP_ARROW,       /* Up arrow key */
-    DOWN_ARROW,     /* Down arrow key */
-    RIGHT_ARROW,    /* Right arrow key */
-    LEFT_ARROW,     /* Left arrow key */
-    NO_INPUT,
-} CmdsvrAction_e;
+    char name[CMDSVR_NAME_LENGTH_MAX];
+    char help[CMDSVR_HELP_LENGTH_MAX];
+    cmdsvr_cmd_cb_t cmd_func_ptr;
+} cmdsvr_cmd_inst_t;
 
-uint32_t xCmdsvrRegisterCmd( const char * const pcCmdName,
-                             const char * const pcCmdHelp,
-                             CmdsvrCommandCb_t ulCallbackFunc );
-BaseType_t xCmdsvrInit( void );
-void vCmdsvrBackgroundThread( void *arg );
+TaskHandle_t cmdsvr_task_hdl_get(void);
+uint32_t cmdsvr_register_cmd(const char * const name,
+                             const char * const help,
+                             cmdsvr_cmd_cb_t cmd_func_ptr);
+BaseType_t cmdsvr_init(UBaseType_t task_priority,
+                       uint16_t task_stack_depth,
+                       Transport *pipe);
 
-#ifdef __cplusplus
-}
-#endif
 #endif /* _CMDSVR_H_ */
