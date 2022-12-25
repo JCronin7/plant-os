@@ -1,11 +1,10 @@
 #include <string.h>
 #include <cmdsvr.h>
-#include <queue.h>
 
-#define CMDSVR_COMMANDS_MAX 16U
+#define CMDSVR_BUFFER_SIZE 32U
 
 /** Registered commands */
-static cmdsvr_cmd_inst_t commands[CMDSVR_COMMANDS_MAX];
+static Cmdsvr::CommandInst commands[CMDSVR_COMMANDS_MAX];
 
 /** Total number of registered commands */
 static uint32_t cmd_count = 0;
@@ -14,7 +13,7 @@ static uint32_t cmd_count = 0;
 static TaskHandle_t cmdsvr_task_hdl;
 
 /** Message Queue */
-static Transport *cmd_pipe;
+static Msg::Server server;
 
 /**
  * @brief
@@ -26,10 +25,9 @@ static Transport *cmd_pipe;
  * @return
  *  Number of words found
  */
-static inline uint8_t splitwords(char * str, char **split)
+static inline uint8_t splitwords(char * str, char *split[])
 {
     uint8_t count = 0;
-
     while (*str != '\0')
     {
         if (*str == ' ')
@@ -48,41 +46,42 @@ static inline uint8_t splitwords(char * str, char **split)
 
 /**
  * @brief
- *  Command server background thread, parses commands sent
+ *  Command server thread, parses commands sent
  *  by interface
  *
  * @param[in] arg - thread args, unused
  */
-static void cmdsvr_background_thread(void *arg)
+static void thread_entry(void *arg)
 {
-    transport_payload cmd_pl;
-    TickType_t previous_wake = 0;
     char *argv[10] = {NULL};
-    uint32_t cmd_return = 0;
+    char cmd_buffer[CMDSVR_BUFFER_SIZE] = {0};
 
     while (true)
     {
         bool valid_cmd = false;
+        uint32_t cmd_return = 0;
 
         /* No commands found */
-        if (cmd_pipe->request_receive(&cmd_pl) == 0)
+        if (server.receive(cmd_buffer) == 0)
         {
+            server.send(&cmd_return, sizeof(uint32_t));
+            vTaskSuspend(cmdsvr_task_hdl);
             continue;
         }
 
         /* Decode command string into list of words */
-        uint8_t argc = splitwords((char*)cmd_pl.payload, argv);
+        uint8_t argc = splitwords((char*)cmd_buffer, argv);
         if (argc == 0)
         {
-            cmd_pl.pl_size = 0;
-            cmd_pipe->response_send(&cmd_pl);
+            server.send(&cmd_return, sizeof(uint32_t));
+            vTaskSuspend(cmdsvr_task_hdl);
             continue;
         }
 
         /* Search registered commands, print help if not found */
         for (uint32_t i = 0; i < cmd_count; i++)
         {
-            const cmdsvr_cmd_inst_t *cmd_inst_ptr = &(commands[i]);
+            const Cmdsvr::CommandInst *cmd_inst_ptr = &(commands[i]);
 
             /* Parse arguments and execute command */
             if (strcmp(argv[0], cmd_inst_ptr->name) == 0)
@@ -109,11 +108,9 @@ static void cmdsvr_background_thread(void *arg)
             Serial.println("Unrecognized command, type \'help\' for options");
         }
 
-        memcpy(cmd_pl.payload, &cmd_return, sizeof(uint32_t));
-        cmd_pl.pl_size = sizeof(uint32_t);
-        cmd_pipe->response_send(&cmd_pl);
+        server.send(&cmd_return, sizeof(uint32_t));
 
-        vTaskDelayUntil(&previous_wake, 10 / portTICK_PERIOD_MS);
+        vTaskSuspend(cmdsvr_task_hdl);
     }
 }
 
@@ -124,7 +121,7 @@ static void cmdsvr_background_thread(void *arg)
  * @return
  *  Task handle to background thread
  */
-TaskHandle_t cmdsvr_task_hdl_get(void)
+TaskHandle_t Cmdsvr::task_hdl_get(void)
 {
     return cmdsvr_task_hdl;
 }
@@ -140,9 +137,9 @@ TaskHandle_t cmdsvr_task_hdl_get(void)
  * @return
  *  status code
  */
-uint32_t cmdsvr_register_cmd(const char * const name,
-                             const char * const help,
-                             cmdsvr_cmd_cb_t cmd_func_ptr)
+uint32_t Cmdsvr::register_cmd(const char * const name,
+                              const char * const help,
+                              Command_cb cmd_func_ptr)
 {
     if (cmd_count >= (uint32_t)CMDSVR_COMMANDS_MAX)
     {
@@ -150,7 +147,7 @@ uint32_t cmdsvr_register_cmd(const char * const name,
     }
 
     uint32_t idx = cmd_count++;
-    cmdsvr_cmd_inst_t *cmd_inst_ptr = &(commands[idx]);
+    CommandInst *cmd_inst_ptr = &(commands[idx]);
 
     strcpy(cmd_inst_ptr->name, name);
     strcpy(cmd_inst_ptr->help, help);
@@ -163,26 +160,27 @@ uint32_t cmdsvr_register_cmd(const char * const name,
  * @brief
  *  Command server init function
  *
- * @param[in] task_priority     - Background task priority
- * @param[in] task_stack_depth  - Background task stack depth
- * @param[in] xCmdPipe          - Message pointer
+ * @param[in] task_priority - Background task priority
+ * @param[in] task_stack    - Background task stack depth
+ * @param[in] pipe          - Message queue pointer
  *
  * @return
  *  Status, 1 on success, 0 on fail
  */
-BaseType_t cmdsvr_init(UBaseType_t task_priority,
-                       uint16_t task_stack_depth,
-                       Transport *pipe)
+BaseType_t Cmdsvr::initialize(UBaseType_t task_priority,
+                              uint16_t task_stack,
+                              Msg::Pipe *pipe)
 {
     BaseType_t status;
 
-    cmd_pipe = pipe;
-    status = xTaskCreate(cmdsvr_background_thread,
+    server = Msg::Server(pipe);
+    status = xTaskCreate(thread_entry,
                          "CMDSVR",
-                         task_stack_depth,
+                         task_stack,
                          NULL,
                          task_priority,
                          &cmdsvr_task_hdl);
-
+    vTaskSuspend(cmdsvr_task_hdl);
+    server.registerServer(cmdsvr_task_hdl);
     return status;
 }

@@ -11,6 +11,8 @@
 
 #define HISTORY_BUFFER_OFFSET           (0U)
 
+using namespace Interface;
+
 typedef enum usb_serial_input
 {
     NO_INPUT = 0,
@@ -31,7 +33,7 @@ static CommandHistory cmds(HISTORY_BUFFER_OFFSET,
                            USB_SERIAL_SAVED_CMDS,
                            USB_SERIAL_LINE_SIZE);
 
-static Transport *cmd_pipe;
+static Msg::Client client;
 
 /**
  * @brief
@@ -102,18 +104,19 @@ static void usb_serial_receive(usb_serial_input_enum *previous_action,
  * @return true
  * @return false
  */
-bool usb_serial_getline(char *buffer)
+bool Interface::usb_serial_getline(char *buffer)
 {
     static usb_serial_input_enum state = NO_INPUT;
     static uint16_t length = 0;
-    transport_payload cmd_pl;
+    uint32_t response;
 
-    if (cmd_pipe->response_receive(0, &cmd_pl))
+    if (client.receive(&response))
     {
-        if (cmd_pl.pl_size == 0)
+        if (response != 0)
         {
             Serial.println("Command Error!");
         }
+
         PRINT_PROMPT();
     }
 
@@ -126,17 +129,14 @@ bool usb_serial_getline(char *buffer)
         {
         /* Append string terminator to command and return */
         case ENTER:
-            buffer[length++] = '\0';
-            Serial.write('\n');
-            memcpy(cmd_pl.payload, (void *)buffer, length);
-            cmd_pl.pl_size = length;
-            cmd_pl.id = 0;
-            cmd_pipe->request_send(&cmd_pl);
-            if (length > 1)
+            if (length != 0)
             {
+                buffer[length++] = '\0';
                 cmds.insert(buffer);
                 cmds.reset();
             }
+            Serial.write('\n');
+            client.send(buffer, length);
             length = 0;
             break;
 
@@ -194,8 +194,9 @@ bool usb_serial_getline(char *buffer)
     return state == ENTER;
 }
 
-void usb_serial_init(Transport *pipe)
+void Interface::usb_serial_init(Msg::Pipe *pipe)
 {
-    cmd_pipe = pipe;
+    client = Msg::Client(pipe);
+    client.idSet(0);
     PRINT_PROMPT();
 }

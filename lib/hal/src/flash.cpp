@@ -2,6 +2,7 @@
 #include <string.h>
 #include <FlashStorage.h>
 #include <Arduino.h>
+#include <FlashAsEEPROM.h>
 
 // Use 0-2. Larger for more debugging messages
 #define FLASH_DEBUG ( 0 )
