@@ -3,39 +3,35 @@
 
 #include <stdint.h>
 #include <FreeRTOS_SAMD21.h>
-#include <transport.h>
+#include <msg.h>
 
 #define CMDSVR_NAME_LENGTH_MAX  32U
 #define CMDSVR_HELP_LENGTH_MAX  64U
+#define CMDSVR_COMMANDS_MAX 16U
 
 #define CMDSVR_STATUS_SUCCESS       0U
 #define CMDSVR_STATUS_COMMAND_OVF   1U
 
-/** Callback function type */
-typedef uint32_t ( *cmdsvr_cmd_cb_t )( uint8_t, char *[] );
-
-/** Message payload structure */
-typedef struct cmdsvr_cmd
+namespace Cmdsvr
 {
-    char name[CMDSVR_NAME_LENGTH_MAX];
-    uint8_t argc;
-    char *argv[];
-} cmdsvr_cmd_t;
+    /** Callback function type */
+    typedef uint32_t ( *Command_cb )( uint8_t, char *[] );
 
-/** Command struct */
-typedef struct cmdsvr_cmd_inst
-{
-    char name[CMDSVR_NAME_LENGTH_MAX];
-    char help[CMDSVR_HELP_LENGTH_MAX];
-    cmdsvr_cmd_cb_t cmd_func_ptr;
-} cmdsvr_cmd_inst_t;
+    /** Command struct */
+    struct CommandInst
+    {
+        char name[CMDSVR_NAME_LENGTH_MAX];
+        char help[CMDSVR_HELP_LENGTH_MAX];
+        Command_cb cmd_func_ptr;
+    };
 
-TaskHandle_t cmdsvr_task_hdl_get(void);
-uint32_t cmdsvr_register_cmd(const char * const name,
-                             const char * const help,
-                             cmdsvr_cmd_cb_t cmd_func_ptr);
-BaseType_t cmdsvr_init(UBaseType_t task_priority,
-                       uint16_t task_stack_depth,
-                       Transport *pipe);
+    TaskHandle_t task_hdl_get(void);
+    uint32_t register_cmd(const char * const name,
+                          const char * const help,
+                          Command_cb cmd_func_ptr);
+    BaseType_t initialize(UBaseType_t task_priority,
+                          uint16_t task_stack,
+                          Msg::Pipe *pipe);
+}
 
 #endif /* _CMDSVR_H_ */

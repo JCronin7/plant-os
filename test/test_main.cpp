@@ -2,9 +2,12 @@
 #include <SPI.h>
 #include <unity.h>
 
+extern void msg_init(void);
+void test_msg(void);
+
 void setUp(void)
 {
-    // set stuff up here
+    msg_init();
 }
 
 void tearDown(void)
@@ -14,6 +17,7 @@ void tearDown(void)
 
 void test(void)
 {
+    test_msg();
     TEST_ASSERT_EQUAL(true, true);
 }
 

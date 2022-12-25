@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <FreeRTOS_SAMD21.h>
-#include <transport.h>
+#include <msg.h>
 #include <interface.h>
 #include <cmdsvr.h>
 #include <config.h>
@@ -11,7 +11,7 @@
 #define LED_RING_DATA_IN_PIN 11
 #define PRINT_SEP "****************************************************"
 
-static Transport command_pipe(16);
+static Msg::Pipe command_pipe(4);
 
 static char ptrTaskList[256];
 
@@ -50,11 +50,11 @@ uint32_t sys_info_cmd(uint8_t argc, char *argv[])
     Serial.println(PRINT_SEP);
     Serial.println("[Stacks Free Bytes Remaining] ");
 
-    measurement = uxTaskGetStackHighWaterMark(*pxInterfaceTaskHandleGet());
+    measurement = uxTaskGetStackHighWaterMark(Interface::task_hdl_get());
     Serial.print("Interface thread: ");
     Serial.println(measurement);
 
-    measurement = uxTaskGetStackHighWaterMark(cmdsvr_task_hdl_get());
+    measurement = uxTaskGetStackHighWaterMark(Cmdsvr::task_hdl_get());
     Serial.print("Command Server Thread: ");
     Serial.println(measurement);
 
@@ -83,53 +83,56 @@ void setup()
     vSetErrorSerial(&Serial);
 
     /* Serial and Wi-Fi interface */
-    status &= vInterfaceInit(INTERFACE_TASK_PRIORITY,
-                              INTERFACE_TASK_STACK,
-                              &command_pipe);
+    status &= Interface::initialize(INTERFACE_TASK_PRIORITY,
+                                    INTERFACE_TASK_STACK,
+                                    &command_pipe);
     /* Command server */
-    status &= cmdsvr_init(CMDSVR_TASK_PRIORITY,
-                           2*CMDSVR_TASK_STACK,
+    status &= Cmdsvr::initialize(CMDSVR_TASK_PRIORITY,
+                           CMDSVR_TASK_STACK,
                            &command_pipe);
 
 #if 0
-    Cmdsvr::xCmdsvrRegisterCmd("wr",
-                               "write to eeprom",
-                               (CmdsvrCommandCb_t)ulHalEepromWriteCmd);
-    Cmdsvr::xCmdsvrRegisterCmd("rd",
-                               "read from eeprom",
-                               (CmdsvrCommandCb_t)ulHalEepromReadCmd);
-    Cmdsvr::xCmdsvrRegisterCmd("print",
-                               "",
-                               (CmdsvrCommandCb_t)ulHalEepromPrintCmd);
+    Cmdsvr::register_cmd("wr",
+                         "write to eeprom",
+                         (CmdsvrCommandCb_t)ulHalEepromWriteCmd);
+    Cmdsvr::register_cmd("rd",
+                         "read from eeprom",
+                         (CmdsvrCommandCb_t)ulHalEepromReadCmd);
+    Cmdsvr::register_cmd("print",
+                         "",
+                         (CmdsvrCommandCb_t)ulHalEepromPrintCmd);
 #endif
     /* Wifi sever */
-    status &= webserver_init(80);
-    cmdsvr_register_cmd("wifi",
-                        "Send command to WiFi subsystem.",
-                        (cmdsvr_cmd_cb_t)webserver_cmdsvr);
+   Cmdsvr::register_cmd("wifi",
+                       "Send command to WiFi subsystem.",
+                       (Cmdsvr::Command_cb)Interface::Webserver::cmdsvr);
     status &= app_init(3, 2*CMDSVR_TASK_STACK);
     /* EK1940 Soil moisture sensor */
-    cmdsvr_register_cmd("app",
+    Cmdsvr::register_cmd("app",
                         "Control user application",
-                        (cmdsvr_cmd_cb_t)app_cmdsvr);
+                        (Cmdsvr::Command_cb)app_cmdsvr);
     /* Built-in LED */
     status &= led_init(LED_RING_DATA_IN_PIN);
-    cmdsvr_register_cmd("led",
+    Cmdsvr::register_cmd("led",
                         "Toggle builtin and ring led using \'led on/off/blink \'period / 2\'\'",
-                        (cmdsvr_cmd_cb_t)led_cmdsvr);
+                        (Cmdsvr::Command_cb)led_cmdsvr);
 #if 0
     /* BH1750 Light intensity sensor */
-    cmdsvr_register_cmd("light",
+    Cmdsvr::register_cmd("light",
                         "Read sensor",
-                        (cmdsvr_cmd_cb_t)light_sensor.cmdsvr);
-#endif
+                        (Cmdsvr::Command_cb)light_sensor.cmdsvr);
     /* EK1940 Soil moisture sensor */
-    cmdsvr_register_cmd("moist",
+    Cmdsvr::register_cmd("moist",
                         "Read sensor",
-                        (cmdsvr_cmd_cb_t)moist_sensor.cmdsvr);
+                        (Cmdsvr::Command_cb)moist_sensor.cmdsvr);
+#endif
     /* Water Pump */
-    cmdsvr_register_cmd("pump", "Set Water Pump", (cmdsvr_cmd_cb_t)pump.cmdsvr);
-    cmdsvr_register_cmd("sys_info", "Print task information", (cmdsvr_cmd_cb_t)sys_info_cmd);
+    Cmdsvr::register_cmd("pump",
+                         "Set Water Pump",
+                         (Cmdsvr::Command_cb)pump.cmdsvr);
+    Cmdsvr::register_cmd("sys_info",
+                         "Print task information",
+                         (Cmdsvr::Command_cb)sys_info_cmd);
 
     //ulFlashPrintCmd(0, nullptr);
     vTaskStartScheduler();

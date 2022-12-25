@@ -1,19 +1,20 @@
 #include <interface.h>
 #include <hal.h>
 
-static TickType_t xPreviousWake = 0;
 static TaskHandle_t xInterfaceTaskHdl;
 
 static char xSerialBuffer[USB_SERIAL_LINE_SIZE];
 
-static void vInterfaceTask(void *arg)
+static void task_entry(void *arg)
 {
+    static TickType_t xPreviousWake = 0;
+
     while (true)
     {
-        if (usb_serial_getline(xSerialBuffer))
+        if (Interface::usb_serial_getline(xSerialBuffer))
         {
         }
-        webserver_background_task();
+        Interface::Webserver::spin();
 
         vTaskDelayUntil(&xPreviousWake, 10 / portTICK_PERIOD_MS);
     }
@@ -23,9 +24,9 @@ static void vInterfaceTask(void *arg)
  * @brief
  *
  */
-void interface_read(uint32_t offset,
-                    uint32_t length,
-                    void *buffer)
+void Interface::interface_read(uint32_t offset,
+                               uint32_t length,
+                               void *buffer)
 {
     if ((offset + length) < MEM_REG_LENGTH_ITRFCE)
     {
@@ -37,9 +38,9 @@ void interface_read(uint32_t offset,
  * @brief
  *
  */
-void interface_write(uint32_t offset,
-                     uint32_t length,
-                     void *buffer)
+void Interface::interface_write(uint32_t offset,
+                                uint32_t length,
+                                void *buffer)
 {
     if ((offset + length) < MEM_REG_LENGTH_ITRFCE)
     {
@@ -47,24 +48,24 @@ void interface_write(uint32_t offset,
     }
 }
 
-TaskHandle_t *pxInterfaceTaskHandleGet(void)
+TaskHandle_t Interface::task_hdl_get(void)
 {
-    return (TaskHandle_t *)&xInterfaceTaskHdl;
+    return xInterfaceTaskHdl;
 }
 
-BaseType_t vInterfaceInit(UBaseType_t uxPriority,
-                          uint16_t usStackDepth,
-                          Transport *pipe)
+BaseType_t Interface::initialize(UBaseType_t uxPriority,
+                                 uint16_t usStackDepth,
+                                 Msg::Pipe *pipe)
 {
-    BaseType_t xStatus;
+    BaseType_t status;
 
+    Webserver::initialize(80);
     usb_serial_init(pipe);
-    xStatus = xTaskCreate(vInterfaceTask,
-                          "INTERFACE",
-                          usStackDepth,
-                          NULL,
-                          uxPriority,
-                          &xInterfaceTaskHdl);
-
-    return xStatus;
+    status = xTaskCreate(task_entry,
+                         "INTERFACE",
+                         usStackDepth,
+                         NULL,
+                         uxPriority,
+                         &xInterfaceTaskHdl);
+    return status;
 }

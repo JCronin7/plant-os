@@ -5,41 +5,30 @@
 #define NETWORK_NAME_PROMPT ("Network Name: ")
 #define NETWORK_PASS_PROMPT ("Network Pass: ")
 
-/* Web Server */
-static WiFiServer server(80);
-static WiFiClient client;
-int32_t connection_status = WL_IDLE_STATUS;
+using namespace Interface;
 
-/**
- * @brief print board's IP address
- *
- */
-static inline void print_ip(void)
-{
-    WiFi.localIP().printTo(Serial);
-}
+WiFiServer Webserver::server = WiFiServer(80);
+WiFiClient Webserver::client = WiFiClient();
+uint32_t Webserver::connection_status = WL_IDLE_STATUS;
 
-/**
- * @brief print the received signal strength
- *
- */
-static inline void print_rssi(void)
-{
-    Serial.print(WiFi.RSSI());
-    Serial.println("dBm");
-}
-
-static void print_status(void)
+void Webserver::status(void)
 {
     // print the SSID of the network you're attached to:
     Serial.print("SSID: ");
     Serial.println(WiFi.SSID());
 
-    print_ip();
-    print_rssi();
+    WiFi.localIP().printTo(Serial);
+    Serial.print(WiFi.RSSI());
+    Serial.println("dBm");
 }
 
-static BaseType_t enable_wifi(void)
+void Webserver::initialize(uint16_t port)
+{
+    server = WiFiServer(port);
+    enable();
+}
+
+BaseType_t Webserver::enable(void)
 {
     if (WiFi.status() == WL_NO_MODULE)
     {
@@ -57,8 +46,8 @@ static BaseType_t enable_wifi(void)
     return pdPASS;
 }
 
-static BaseType_t connect(webserver_network_t *credentials,
-                          int8_t ucMaxAttempts=5)
+BaseType_t Webserver::connect(webserver_network_t *credentials,
+                              int8_t ucMaxAttempts)
 {
     int8_t ucAttempts = ucMaxAttempts;
 
@@ -86,14 +75,14 @@ static BaseType_t connect(webserver_network_t *credentials,
         return pdPASS;
     default:
         client = server.available();
-        print_status();
+        status();
         Serial.println("\nStarting connection to server...");
         server.begin();
         return pdPASS;
     }
 }
 
-void webserver_background_task(void)
+void Webserver::spin(void)
 {
     client = server.available();
 
@@ -102,77 +91,59 @@ void webserver_background_task(void)
         return;
     }
 
-    // if you get a client,
-    Serial.println("new client"); // print a message out the serial port
-    String currentLine = "";      // make a String to hold incoming data from the client
+    String currentLine = "";
+
     while (client.connected())
-    { // loop while the client's connected
-        if (client.available())
-        {                           // if there's bytes to read from the client,
-            char c = client.read(); // read a byte, then
-            Serial.write(c);        // print it out the serial monitor
-            if (c == '\n')
-            { // if the byte is a newline character
+    {
+        if (!client.available())
+        {
+            continue;
+        }
 
-                // if the current line is blank, you got two newline characters in a row.
-                // that's the end of the client HTTP request, so send a response:
-                if (currentLine.length() == 0)
-                {
-
-                    // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-                    // and a content-type so the client knows what's coming, then a blank line:
-                    client.println("HTTP/1.1 200 OK");
-                    client.println("Content-type:text/html");
-                    client.println();
-
-                    // create the buttons
-                    client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-                    client.print("Click <a href=\"/L\">here</a> turn the LED off<br><br>");
-
-                    int randomReading = analogRead(A1);
-                    client.print("Random reading from analog pin: ");
-                    client.print(randomReading);
-
-                    // The HTTP response ends with another blank line:
-                    client.println();
-                    // break out of the while loop:
-                    break;
-                }
-                else
-                { // if you got a newline, then clear currentLine:
-                    currentLine = "";
-                }
-            }
-            else if (c != '\r')
-            {                     // if you got anything else but a carriage return character,
-                currentLine += c; // add it to the end of the currentLine
-            }
-
-            if (currentLine.endsWith("GET /H"))
+        char c = client.read();
+        if (c == '\n')
+        {
+            if (currentLine.length() == 0)
             {
-                digitalWrite(LED_BUILTIN, HIGH);
+                // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+                // and a content-type so the client knows what's coming, then a blank line:
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type:text/html");
+                client.println();
+
+                // create the buttons
+                client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
+                client.print("Click <a href=\"/L\">here</a> turn the LED off<br><br>");
+
+                // The HTTP response ends with another blank line:
+                client.println();
+                // break out of the while loop:
+                break;
             }
-            if (currentLine.endsWith("GET /L"))
+            else
             {
-                digitalWrite(LED_BUILTIN, LOW);
+                currentLine = "";
             }
+        }
+        else if (c != '\r')
+        {                     // if you got anything else but a carriage return character,
+            currentLine += c; // add it to the end of the currentLine
+        }
+
+        if (currentLine.endsWith("GET /H"))
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
+        }
+        if (currentLine.endsWith("GET /L"))
+        {
+            digitalWrite(LED_BUILTIN, LOW);
         }
     }
 
-    // close the connection:
     client.stop();
-    Serial.println("client disconnected");
 }
 
-BaseType_t webserver_init(uint32_t port)
-{
-    BaseType_t status = pdPASS;
-    server = WiFiServer(port);
-    status &= enable_wifi();
-    return status;
-}
-
-uint32_t webserver_cmdsvr(uint8_t argc, char *argv[])
+uint32_t Webserver::cmdsvr(uint8_t argc, char *argv[])
 {
     if (argc < 2)
     {
@@ -187,13 +158,9 @@ uint32_t webserver_cmdsvr(uint8_t argc, char *argv[])
         credentials.pass = "famous8618cover"; //argv[3];
         return (connect(&credentials, 5) != pdPASS);
     }
-    else if (strcmp(argv[0], "ip") == 0)
+    else if (strcmp(argv[0], "status") == 0)
     {
-        print_ip();
-    }
-    else if (strcmp(argv[0], "rssi") == 0)
-    {
-        print_rssi();
+        status();
     }
 
     return 0;

@@ -1,5 +1,7 @@
 #include <interface_loc.h>
 
+using namespace Interface;
+
 uint32_t CommandHistory::offset(uint16_t idx)
 {
     return relative_offset + (idx * entry_size);
