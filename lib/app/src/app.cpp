@@ -1,5 +1,8 @@
 #include <app.h>
 
+Bh1750Sensor *light_sensor;
+Ek1940Sensor *moist_sensor;
+Pump *pump;
 static TaskHandle_t app_task_hdl;
 
 TaskHandle_t *app_task_hdl_get(void)
@@ -23,7 +26,7 @@ uint32_t app_cmdsvr(uint8_t argc, char *argv[])
         vTaskSuspend(app_task_hdl);
     }
 
-    return 1;
+    return 0;
 }
 
 BaseType_t app_init(UBaseType_t task_priority,
@@ -37,5 +40,10 @@ BaseType_t app_init(UBaseType_t task_priority,
                          task_priority,
                          &app_task_hdl);
     vTaskSuspend(app_task_hdl);
+
+    light_sensor = new Bh1750Sensor(LOW);
+    moist_sensor = new Ek1940Sensor(PIN_A1);
+    pump = new Pump(1);
+
     return status;
 }

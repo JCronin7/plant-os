@@ -16,7 +16,7 @@ public:
     Ek1940Sensor(uint8_t ucDataOut);
     uint32_t read(void);
     static uint32_t cmdsvr(uint8_t argc,
-                           char *argv[] );
+                           char *argv[]);
 };
 
 #endif /* _MOIST_SENSOR_H_ */

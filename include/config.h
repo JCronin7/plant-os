@@ -1,6 +1,9 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+#define FW_VERSION_MAJOR 1
+#define FW_VERSION_MINOR 1
+
 #define APP_TASK_PRIORITY (1U)
 #define APP_TASK_STACK    (4 * configMINIMAL_STACK_SIZE)
 

@@ -25,13 +25,19 @@ uint32_t Webserver::pagesize = 0;
 
 void Webserver::status(void)
 {
-    // print the SSID of the network you're attached to:
-    Serial.print("SSID: ");
-    Serial.println(WiFi.SSID());
+    Serial.print("Connection Status: ");
+    Serial.println((uint32_t)connection_status);
 
-    WiFi.localIP().printTo(Serial);
-    Serial.print(WiFi.RSSI());
-    Serial.println("dBm");
+    // print the SSID of the network you're attached to:
+    if (connection_status == WL_CONNECTED)
+    {
+        Serial.print("SSID: ");
+        Serial.println(WiFi.SSID());
+
+        WiFi.localIP().printTo(Serial);
+        Serial.print(WiFi.RSSI());
+        Serial.println("dBm");
+    }
 }
 
 void Webserver::initialize(uint16_t port,
@@ -76,7 +82,7 @@ BaseType_t Webserver::connect(webserver_network_t *credentials,
         Serial.println(credentials->ssid);
 
         connection_status = WiFi.begin(credentials->ssid,
-                             credentials->pass);
+                                       credentials->pass);
         for (uint8_t i = 0; i < 3; i++)
         {
             Serial.write('.');
@@ -171,7 +177,7 @@ uint32_t Webserver::cmdsvr(uint8_t argc, char *argv[])
         credentials.pass = "famous8618cover"; //argv[3];
         return (connect(&credentials, 5) != pdPASS);
     }
-    else if (strcmp(argv[0], "status") == 0)
+    else if (strcmp(argv[1], "status") == 0)
     {
         status();
     }

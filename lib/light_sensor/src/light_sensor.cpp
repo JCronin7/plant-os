@@ -91,112 +91,183 @@
  */
 #define CHG_MTIME_LO(MT)    ( 0x60 | ((MT) & 0x1F) )
 
-#define LSENSE_BH1750_ADDRESS_LOW   ( 0x23 )
-#define LSENSE_BH1750_ADDRESS_HIGH  ( 0x5C )
-#define LSENSE_BH1750_LOOP_RATE     ( 120ul / portTICK_PERIOD_MS )
+/**
+ * @brief
+ *  Set BH1750 address based on address pin state
+ *
+ */
+#define BH1750_ADDRESS(PIN) ( (PIN) ? 0x5C : 0x23 )
 
-#define LSENSE_BH1750_ADDRESS(PIN)  ( (PIN) ? LSENSE_BH1750_ADDRESS_HIGH : LSENSE_BH1750_ADDRESS_LOW )
+/** Array containing BH1750 instances used by command server */
+static Bh1750Sensor *instances[MAX_INSTANCES] = { nullptr };
 
-static Bh1750Sensor *xInstances[MAX_INSTANCES] = { nullptr };
-static uint32_t ulInstanceCount = 0;
+/** BH1750 instance count */
+static uint32_t inst_cnt = 0;
 
+/**
+ * @brief
+ *  Send a command to a BH1750 instance over I2C
+ *
+ * @param[in] op - Command code
+ *
+ * @return
+ *  Acknowledge signal
+ */
 uint8_t Bh1750Sensor::setOpcode(uint8_t op)
 {
     uint8_t ack;
 
-    Wire.beginTransmission(xI2cAddress);
+    Wire.beginTransmission(i2c_addr);
     Wire.write(op);
     ack = Wire.endTransmission();
 
     return ack;
 }
 
+/**
+ * @brief
+ *  Read 2-bytes from a BH1750 instance
+ *
+ * @return
+ *  Returned data
+ */
 uint16_t Bh1750Sensor::read(void)
 {
-    Adc16Data_t xReadData;
-    Wire.requestFrom(xI2cAddress, sizeof(uint16_t));
-    xReadData.xBytes.ucHi = Wire.read();
-    xReadData.xBytes.ucLo = Wire.read();
-    Wire.endTransmission();
+    AdcData_16b read_data;
+    Wire.requestFrom(i2c_addr, sizeof(uint16_t));
+    read_data.bytes.upper = Wire.read();
+    read_data.bytes.lower = Wire.read();
+    //Wire.endTransmission();
 
-    return xReadData.usData;
+    return read_data.data;
 }
 
-static float convert( uint16_t usData )
+/**
+ * @brief Construct a new BH1750Sensor object
+ *
+ * @param[in] address - Address pin state
+ */
+Bh1750Sensor::Bh1750Sensor(bool address) : last_measure(0), i2c_addr(BH1750_ADDRESS(address))
 {
-    return (float)usData / 1.2f;
-}
-
-Bh1750Sensor::Bh1750Sensor(bool ucAddr) : xLastMeasure(0)
-{
-    if ( ulInstanceCount == MAX_INSTANCES )
+    inst_idx = -1;
+    if (inst_cnt <= MAX_INSTANCES)
     {
-        return;
+        inst_idx = inst_cnt;
+        instances[inst_cnt] = this;
+        inst_cnt++;
     }
 
-    xInstances[ulInstanceCount] = this;
-
-    xI2cAddress = LSENSE_BH1750_ADDRESS(ucAddr);
-    ucInstIdx = ulInstanceCount;
-
+    setPower(POWER_ON);
     setMode(CONT_HRES_MD1);
     setMeasureDelay(69);
-
-    ulInstanceCount++;
 }
 
-uint8_t Bh1750Sensor::setPower( uint8_t ucState )
+/**
+ * @brief
+ *  Set BH1750 power state
+ *
+ * @param[in] state - Power state, high is on
+ *
+ * @return
+ *  Acknowledge signal
+ */
+uint8_t Bh1750Sensor::setPower(uint8_t state)
 {
-    ucPowerState = ucState;
-    return setOpcode((ucState) ? POWER_ON : POWER_DOWN);
+    power_state = state;
+    return setOpcode(state);
 }
 
-uint8_t Bh1750Sensor::reset( void )
+/**
+ * @brief
+ *  Reset BH1750
+ *
+ * @return
+ *  Acknowledge signal
+ */
+uint8_t Bh1750Sensor::reset(void)
 {
     return setOpcode(RESET);
 }
 
-uint8_t Bh1750Sensor::setMode( uint8_t ucMode )
+/**
+ * @brief
+ *  Set aquisition mode
+ *
+ * @param[in] mode - resolution mode
+ *
+ * @return
+ *  Acknowledge signal
+ */
+uint8_t Bh1750Sensor::setMode(uint8_t mode)
 {
-    ucMode = ucMode;
-    return setOpcode(ucMode);
+    this->mode = mode;
+    return setOpcode(mode);
 }
 
-uint8_t Bh1750Sensor::setMeasureDelay( uint8_t ucMeasureDelay )
+/**
+ * @brief
+ *  Set measure delay
+ *
+ * @param[in] measure_delay - measure delay
+ *
+ * @return
+ *  Acknowledge signal
+ */
+uint8_t Bh1750Sensor::setMeasureDelay(uint8_t measure_delay)
 {
     uint8_t ack;
 
-    ucMeasureDelay = ucMeasureDelay;
-    ack = setOpcode(CHG_MTIME_HI(ucMeasureDelay));
-    ack |= setOpcode(CHG_MTIME_LO(ucMeasureDelay));
+    this->measure_delay = measure_delay;
+    ack = setOpcode(CHG_MTIME_HI(measure_delay));
+    ack |= setOpcode(CHG_MTIME_LO(measure_delay));
 
     return ack;
 }
 
-int32_t Bh1750Sensor::measure( void )
+/**
+ * @brief
+ *  Measure light sensitivity from a BH1750 instance
+ *
+ * @return
+ *  Light sensitivity reading
+ */
+uint16_t Bh1750Sensor::measure(void)
 {
-    const TickType_t xCurrentTick = xTaskGetTickCount();
+    const TickType_t current_tick = xTaskGetTickCount();
 
-    if ( (xCurrentTick - xLastMeasure) >= ucMeasureDelay )
+    if ((current_tick - last_measure) >= measure_delay)
     {
-        xLastMeasure = xCurrentTick;
-        uint16_t usData = read();
-        return (int32_t)convert(usData);
+        last_measure = current_tick;
+        return read();
     }
 
     return -1;
 }
 
-uint32_t Bh1750Sensor::cmdsvr( uint8_t argc, char *argv[] )
+/**
+ * @brief
+ *  BH1750 command server
+ *
+ * @param[in] argc - Argument count
+ * @param[in] argv - Arguments
+ *
+ * @return
+ *  Command status
+ */
+uint32_t Bh1750Sensor::cmdsvr(uint8_t argc, char *argv[])
 {
-    Bh1750Sensor *pxInst = (argc < 1) ? xInstances[0] : xInstances[atoi(argv[1])];
-    uint16_t usData;
+    Bh1750Sensor *inst = (argc < 1) ? instances[0] : instances[atoi(argv[1])];
+    uint16_t data;
 
     do
     {
-        usData = pxInst->measure();
-    } while (usData == -1);
-    Serial.print(usData);
+        data = inst->measure();
+    } while (data == -1);
+
+    Serial.print("BH1750 instance ");
+    Serial.print(inst->inst_idx);
+    Serial.print(" reads ");
+    Serial.println(data);
 
     return 0;
 }
