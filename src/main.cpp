@@ -4,6 +4,7 @@
 #include <interface.h>
 #include <cmdsvr.h>
 #include <config.h>
+#include <webpage.h>
 #include <app.h>
 
 #define ERROR_LED_PIN 13
@@ -86,11 +87,15 @@ void setup()
     status &= Interface::initialize(INTERFACE_TASK_PRIORITY,
                                     INTERFACE_TASK_STACK,
                                     &command_pipe);
+    Interface::Webserver::initialize(80,
+                                     pagedata,
+                                     pagesize,
+                                     &command_pipe);
     /* Command server */
     status &= Cmdsvr::initialize(CMDSVR_TASK_PRIORITY,
                            CMDSVR_TASK_STACK,
                            &command_pipe);
-
+/// @todo Need to get flash/eeprom working
 #if 0
     Cmdsvr::register_cmd("wr",
                          "write to eeprom",
@@ -104,35 +109,40 @@ void setup()
 #endif
     /* Wifi sever */
    Cmdsvr::register_cmd("wifi",
-                       "Send command to WiFi subsystem.",
-                       (Cmdsvr::Command_cb)Interface::Webserver::cmdsvr);
-    status &= app_init(3, 2*CMDSVR_TASK_STACK);
+                        "Send command to WiFi subsystem.",
+                        (Cmdsvr::Command_cb)Interface::Webserver::cmdsvr,
+                        'W');
+    status &= app_init(APP_TASK_PRIORITY, APP_TASK_STACK);
     /* EK1940 Soil moisture sensor */
     Cmdsvr::register_cmd("app",
-                        "Control user application",
-                        (Cmdsvr::Command_cb)app_cmdsvr);
+                         "Control user application",
+                         (Cmdsvr::Command_cb)app_cmdsvr,
+                         'A');
     /* Built-in LED */
     status &= led_init(LED_RING_DATA_IN_PIN);
     Cmdsvr::register_cmd("led",
-                        "Toggle builtin and ring led using \'led on/off/blink \'period / 2\'\'",
-                        (Cmdsvr::Command_cb)led_cmdsvr);
-#if 0
+                         "Toggle builtin and ring led",
+                         (Cmdsvr::Command_cb)led_cmdsvr,
+                         'L');
     /* BH1750 Light intensity sensor */
     Cmdsvr::register_cmd("light",
                         "Read sensor",
-                        (Cmdsvr::Command_cb)light_sensor.cmdsvr);
+                        (Cmdsvr::Command_cb)Bh1750Sensor::cmdsvr,
+                        'G');
     /* EK1940 Soil moisture sensor */
     Cmdsvr::register_cmd("moist",
                         "Read sensor",
-                        (Cmdsvr::Command_cb)moist_sensor.cmdsvr);
-#endif
+                        (Cmdsvr::Command_cb)Ek1940Sensor::cmdsvr,
+                        'M');
     /* Water Pump */
     Cmdsvr::register_cmd("pump",
                          "Set Water Pump",
-                         (Cmdsvr::Command_cb)pump.cmdsvr);
+                         (Cmdsvr::Command_cb)pump.cmdsvr,
+                         'P');
     Cmdsvr::register_cmd("sys_info",
                          "Print task information",
-                         (Cmdsvr::Command_cb)sys_info_cmd);
+                         (Cmdsvr::Command_cb)sys_info_cmd,
+                         'S');
 
     //ulFlashPrintCmd(0, nullptr);
     vTaskStartScheduler();

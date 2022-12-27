@@ -1,13 +1,14 @@
 #include <string.h>
 #include <cmdsvr.h>
+#include <vector>
 
 #define CMDSVR_BUFFER_SIZE 32U
 
-/** Registered commands */
-static Cmdsvr::CommandInst commands[CMDSVR_COMMANDS_MAX];
+#define cmd_match(input, command)   (strcmp(input, command) == 0)
+#define href_match(input, href)     ((input)[0] == '/' && (input)[1] == href)
 
-/** Total number of registered commands */
-static uint32_t cmd_count = 0;
+/** Registered commands */
+static std::vector<Cmdsvr::CommandInst> commands;
 
 /** Background task handle */
 static TaskHandle_t cmdsvr_task_hdl;
@@ -25,7 +26,8 @@ static Msg::Server server;
  * @return
  *  Number of words found
  */
-static inline uint8_t splitwords(char * str, char *split[])
+static inline uint8_t splitwords(char * str,
+                                 char *split[])
 {
     uint8_t count = 0;
     while (*str != '\0')
@@ -59,7 +61,7 @@ static void thread_entry(void *arg)
     while (true)
     {
         bool valid_cmd = false;
-        uint32_t cmd_return = 0;
+        uint32_t cmd_return = CMDSVR_STATUS_SUCCESS;
 
         /* No commands found */
         if (server.receive(cmd_buffer) == 0)
@@ -79,25 +81,29 @@ static void thread_entry(void *arg)
         }
 
         /* Search registered commands, print help if not found */
-        for (uint32_t i = 0; i < cmd_count; i++)
+        for (auto cmd_inst : commands)
         {
-            const Cmdsvr::CommandInst *cmd_inst_ptr = &(commands[i]);
-
             /* Parse arguments and execute command */
-            if (strcmp(argv[0], cmd_inst_ptr->name) == 0)
+            if (cmd_match(argv[0], cmd_inst.name))
             {
-                cmd_return = cmd_inst_ptr->cmd_func_ptr(argc, argv);
+                cmd_return = cmd_inst.cmd_func_ptr(argc, argv);
                 valid_cmd = true;
             }
-            else if (strcmp(argv[0], "help") == 0)
+            /* If msg begins with /, parse as href */
+            else if (href_match(argv[0], cmd_inst.href))
             {
-                uint8_t ucNameLen = Serial.print(cmd_inst_ptr->name);
-                for (uint8_t j = ucNameLen; j < CMDSVR_NAME_LENGTH_MAX; j++)
+                cmd_return = cmd_inst.cmd_func_ptr(1, argv);
+                valid_cmd = true;
+            }
+            else if (cmd_match(argv[0], "help"))
+            {
+                uint8_t cursor_pos = Serial.print(cmd_inst.name);
+                while (cursor_pos++ < CMDSVR_NAME_LENGTH_MAX)
                 {
                     Serial.write(' ');
                 }
 
-                Serial.println(cmd_inst_ptr->help);
+                Serial.println(cmd_inst.help);
                 valid_cmd = true;
             }
         }
@@ -105,11 +111,10 @@ static void thread_entry(void *arg)
         /* Print help message if invalid input */
         if (valid_cmd == false)
         {
-            Serial.println("Unrecognized command, type \'help\' for options");
+            cmd_return = CMDSVR_STATUS_CMD_NOT_FOUND;
         }
 
         server.send(&cmd_return, sizeof(uint32_t));
-
         vTaskSuspend(cmdsvr_task_hdl);
     }
 }
@@ -133,27 +138,23 @@ TaskHandle_t Cmdsvr::task_hdl_get(void)
  * @param[in] name - Command name
  * @param[in] help - Command help string
  * @param[in] cmd_func_ptr - Command callback function
+ * @param[in] href - Command HREF
  *
  * @return
  *  status code
  */
-uint32_t Cmdsvr::register_cmd(const char * const name,
-                              const char * const help,
-                              Command_cb cmd_func_ptr)
+void Cmdsvr::register_cmd(const char * const name,
+                          const char * const help,
+                          Command_cb cmd_func_ptr,
+                          char href)
 {
-    if (cmd_count >= (uint32_t)CMDSVR_COMMANDS_MAX)
-    {
-        return CMDSVR_STATUS_COMMAND_OVF;
-    }
+    CommandInst cmd_inst;
 
-    uint32_t idx = cmd_count++;
-    CommandInst *cmd_inst_ptr = &(commands[idx]);
-
-    strcpy(cmd_inst_ptr->name, name);
-    strcpy(cmd_inst_ptr->help, help);
-    cmd_inst_ptr->cmd_func_ptr = cmd_func_ptr;
-
-    return CMDSVR_STATUS_SUCCESS;
+    strcpy(cmd_inst.name, name);
+    strcpy(cmd_inst.help, help);
+    cmd_inst.cmd_func_ptr = cmd_func_ptr;
+    cmd_inst.href = href;
+    commands.push_back(cmd_inst);
 }
 
 /**
