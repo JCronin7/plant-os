@@ -9,8 +9,9 @@
 #include <led.h>
 #include <FreeRTOS_SAMD21.h>
 
-extern Ek1940Sensor moist_sensor;
-extern Pump pump;
+extern Bh1750Sensor *light_sensor;
+extern Ek1940Sensor *moist_sensor;
+extern Pump *pump;
 
 void app_main(void *args);
 
