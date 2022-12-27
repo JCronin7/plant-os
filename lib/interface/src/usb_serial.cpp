@@ -13,27 +13,12 @@
 
 using namespace Interface;
 
-typedef enum usb_serial_input
-{
-    NO_INPUT = 0,
-    CHARACTER,   /* a-z, A-Z, 0-9 and space */
-    ESCAPE,      /* Arrow key */
-    CARRIAGE,    /* Carriage return */
-    NEWLINE,     /* New line */
-    ARROW,       /* Arrow key, '[' character after esc */
-    UP_ARROW,    /* Up arrow key */
-    DOWN_ARROW,  /* Down arrow key */
-    RIGHT_ARROW, /* Right arrow key */
-    LEFT_ARROW,  /* Left arrow key */
-    BACKSPACE,   /* Backspace key */
-    ENTER,       /* Enter key */
-} usb_serial_input_enum;
-
 static CommandHistory cmds(HISTORY_BUFFER_OFFSET,
                            USB_SERIAL_SAVED_CMDS,
                            USB_SERIAL_LINE_SIZE);
 
-static Msg::Client client;
+/** Asynchronous message queue*/
+Msg::Client UsbSerial::msg_client = Msg::Client();
 
 /**
  * @brief
@@ -52,69 +37,92 @@ static void clearline(uint32_t size)
     Serial.write('\r');
 }
 
-static inline usb_serial_input_enum is_arrow(char input)
+/**
+ * @brief
+ *  Check if the input char corresponds to the last character
+ *  in an arrow key sequence
+ *
+ * @param[in] input - input char
+ *
+ * @return
+ *  Enum for the output arrow key, NO_INPUT if invalid input
+ */
+static inline usb_serial_input is_arrow(char input)
 {
     if (input <= 'D' && input >= 'A')
     {
-        return (usb_serial_input_enum)(input - 'A' + UP_ARROW);
+        return (usb_serial_input)(input - 'A' + UP_ARROW);
     }
 
     return NO_INPUT;
 }
 
-static void usb_serial_receive(usb_serial_input_enum *previous_action,
-                               char *input)
+/**
+ * @brief
+ *  State machine determining the key input given, (some keys
+ *  correspond to 2-3 inputs)
+ *
+ * @param[in] previous_action - Previous state
+ * @param[in] input - new input
+ *
+ * @return
+ *  New state
+ */
+usb_serial_input UsbSerial::receive(usb_serial_input previous_action,
+                                    char input)
 {
-    *input = (char)Serial.read();
-
-    switch (*input)
+    switch (input)
     {
     case '\r':
-        *previous_action = CARRIAGE;
-        break;
+        return CARRIAGE;
     case '\n':
-        *previous_action = (*previous_action == CARRIAGE) ? ENTER : NEWLINE;
-        break;
+        return (previous_action == CARRIAGE) ? ENTER : NEWLINE;
     case ASCII_BACKSPACE:
-        *previous_action = BACKSPACE;
-        break;
+        return BACKSPACE;
     case ASCII_ESCAPE:
-        *previous_action = ESCAPE;
-        break;
+        return ESCAPE;
     default:
-        if (*input == '[' && *previous_action == ESCAPE)
+        if (input == '[' && previous_action == ESCAPE)
         {
-            *previous_action = ARROW;
+            return ARROW;
         }
-        else if (*previous_action == ARROW)
+        else if (previous_action == ARROW)
         {
-            *previous_action = is_arrow(*input);
+            return is_arrow(input);
         }
-        else
-        {
-            *previous_action = CHARACTER;
-        }
+
+        return CHARACTER;
     }
 }
 
 /**
  * @brief
+ *  Initialize USB Serial class
  *
- * @param buffer
- * @return true
- * @return false
+ * @param[in] pipe - pipe object for async. message passing
  */
-bool Interface::usb_serial_getline(char *buffer)
+void UsbSerial::initialize(Msg::Pipe *pipe)
 {
-    static usb_serial_input_enum state = NO_INPUT;
-    static uint16_t length = 0;
+    msg_client = Msg::Client(pipe);
+    msg_client.idSet(0);
+    PRINT_PROMPT();
+}
+
+/**
+ * @brief
+ *  Function to monitor serial port and wait for commands
+ */
+void UsbSerial::spin(void)
+{
+    static usb_serial_input state = NO_INPUT;
+    static String buffer = "";
     uint32_t response;
 
-    if (client.receive(&response))
+    if (msg_client.receive(&response))
     {
         if (response != 0)
         {
-            Serial.println("Command Error!");
+            Serial.println("Unrecognized command, type \'help\' for options");
         }
 
         PRINT_PROMPT();
@@ -122,44 +130,40 @@ bool Interface::usb_serial_getline(char *buffer)
 
     if (Serial.available() > 0)
     {
-        char ucNewChar = 0;
-        usb_serial_receive(&state, &ucNewChar);
+        char new_char = Serial.read();
+        state = receive(state, new_char);
 
         switch (state)
         {
         /* Append string terminator to command and return */
         case ENTER:
-            if (length != 0)
+            if (buffer.length() != 0)
             {
-                buffer[length++] = '\0';
-                cmds.insert(buffer);
+                buffer += '\0';
+                //cmds.insert(buffer.c_str());
                 cmds.reset();
             }
             Serial.write('\n');
-            client.send(buffer, length);
-            length = 0;
+            msg_client.send((void*)buffer.c_str(), buffer.length());
+            buffer = "";
             break;
 
         /* Remove last entered character */
         case BACKSPACE:
-            if (length > 0)
-            {
-                --length;
-            }
-
-            clearline(PROMPT_SIZE + length + 1);
+            clearline(PROMPT_SIZE + buffer.length());
+            buffer.remove(buffer.length() - 1);
             PRINT_PROMPT();
-            Serial.write(buffer, length);
+            Serial.print(buffer);
             break;
 
         /* Add char to buffer */
         case CHARACTER:
-            buffer[length] = ucNewChar;
-            Serial.write(buffer[length++]);
+            buffer += new_char;
+            Serial.write(new_char);
             break;
 
         case UP_ARROW:
-            clearline(PROMPT_SIZE + length + 1);
+            clearline(PROMPT_SIZE + buffer.length());
             //strcpy(buffer, cmds.previous());
             //length = strlen(buffer);
             PRINT_PROMPT();
@@ -167,7 +171,7 @@ bool Interface::usb_serial_getline(char *buffer)
             break;
 
         case DOWN_ARROW:
-            clearline(PROMPT_SIZE + length + 1);
+            clearline(PROMPT_SIZE + buffer.length());
             //strcpy(buffer, previous_cmd_next());
             //length = strlen(buffer);
             PRINT_PROMPT();
@@ -190,13 +194,4 @@ bool Interface::usb_serial_getline(char *buffer)
             break;
         }
     }
-
-    return state == ENTER;
-}
-
-void Interface::usb_serial_init(Msg::Pipe *pipe)
-{
-    client = Msg::Client(pipe);
-    client.idSet(0);
-    PRINT_PROMPT();
 }

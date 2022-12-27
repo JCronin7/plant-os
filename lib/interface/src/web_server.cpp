@@ -2,14 +2,26 @@
 #include <string.h>
 #include <hal.h>
 
-#define NETWORK_NAME_PROMPT ("Network Name: ")
-#define NETWORK_PASS_PROMPT ("Network Pass: ")
+#define NETWORK_NAME_PROMPT "Network Name: "
+#define NETWORK_PASS_PROMPT "Network Pass: "
 
 using namespace Interface;
 
+/** Wifi server class */
 WiFiServer Webserver::server = WiFiServer(80);
+
+/** Wifi connection client */
 WiFiClient Webserver::client = WiFiClient();
+
+/** Asynchronous message queue*/
+Msg::Client Webserver::msg_client = Msg::Client();
+
+/** Connection status */
 uint32_t Webserver::connection_status = WL_IDLE_STATUS;
+
+const char **Webserver::pagedata = nullptr;
+
+uint32_t Webserver::pagesize = 0;
 
 void Webserver::status(void)
 {
@@ -22,9 +34,16 @@ void Webserver::status(void)
     Serial.println("dBm");
 }
 
-void Webserver::initialize(uint16_t port)
+void Webserver::initialize(uint16_t port,
+                           const char *pagedata[],
+                           uint32_t pagesize,
+                           Msg::Pipe *pipe)
 {
     server = WiFiServer(port);
+    Webserver::pagedata = pagedata;
+    Webserver::pagesize = pagesize;
+    msg_client = Msg::Client(pipe);
+    msg_client.idSet(2);
     enable();
 }
 
@@ -91,7 +110,7 @@ void Webserver::spin(void)
         return;
     }
 
-    String currentLine = "";
+    String request = "";
 
     while (client.connected())
     {
@@ -103,40 +122,34 @@ void Webserver::spin(void)
         char c = client.read();
         if (c == '\n')
         {
-            if (currentLine.length() == 0)
+            if (request.length() == 0)
             {
-                // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-                // and a content-type so the client knows what's coming, then a blank line:
-                client.println("HTTP/1.1 200 OK");
-                client.println("Content-type:text/html");
-                client.println();
+                for (uint32_t i = 0; i < pagesize; i++)
+                {
+                    client.println(pagedata[i]);
+                }
 
-                // create the buttons
-                client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-                client.print("Click <a href=\"/L\">here</a> turn the LED off<br><br>");
-
-                // The HTTP response ends with another blank line:
-                client.println();
-                // break out of the while loop:
                 break;
             }
-            else
-            {
-                currentLine = "";
-            }
+
+            request = "";
         }
         else if (c != '\r')
-        {                     // if you got anything else but a carriage return character,
-            currentLine += c; // add it to the end of the currentLine
+        {
+            request += c;
         }
 
-        if (currentLine.endsWith("GET /H"))
+        if (request.endsWith("HTTP/1.1"))
         {
-            digitalWrite(LED_BUILTIN, HIGH);
-        }
-        if (currentLine.endsWith("GET /L"))
-        {
-            digitalWrite(LED_BUILTIN, LOW);
+            uint8_t end = request.indexOf("HTTP/1.1") - 1;
+            uint8_t start = request.indexOf("GET ") + sizeof("GET ") - 1;
+            char *href = &request[start];
+            href[end - start] = '\0';
+            if (strcmp(href, "/favicon.ico") != 0)
+            {
+                msg_client.send(href, end - start + 1);
+            }
+            request = "";
         }
     }
 

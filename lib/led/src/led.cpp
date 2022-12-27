@@ -36,7 +36,7 @@ uint32_t led_cmdsvr(uint8_t argc, char *argv[])
     {
         return 1;
     }
-
+    Serial.println("test");
     if (strcmp(argv[1], "builtin") == 0)
     {
         if (strcmp(argv[2], "on") == 0)

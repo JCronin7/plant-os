@@ -26,6 +26,22 @@ typedef struct webserver_network
 
 namespace Interface
 {
+    enum usb_serial_input
+    {
+        NO_INPUT = 0,
+        CHARACTER,   /* a-z, A-Z, 0-9 and space */
+        ESCAPE,      /* Arrow key */
+        CARRIAGE,    /* Carriage return */
+        NEWLINE,     /* New line */
+        ARROW,       /* Arrow key, '[' character after esc */
+        UP_ARROW,    /* Up arrow key */
+        DOWN_ARROW,  /* Down arrow key */
+        RIGHT_ARROW, /* Right arrow key */
+        LEFT_ARROW,  /* Left arrow key */
+        BACKSPACE,   /* Backspace key */
+        ENTER,       /* Enter key */
+    };
+
     class Webserver
     {
     private:
@@ -33,12 +49,21 @@ namespace Interface
 
         static WiFiClient client;
 
+        static Msg::Client msg_client;
+
         static uint32_t connection_status;
+
+        static const char **pagedata;
+
+        static uint32_t pagesize;
 
         static void status(void);
 
     public:
-        static void initialize(uint16_t port);
+        static void initialize(uint16_t port,
+                               const char *pagedata[],
+                               uint32_t pagesize,
+                               Msg::Pipe *pipe);
 
         static BaseType_t enable(void);
 
@@ -50,8 +75,18 @@ namespace Interface
         static uint32_t cmdsvr(uint8_t argc, char *argv[]);
     };
 
-    bool usb_serial_getline(char *buffer);
-    void usb_serial_init(Msg::Pipe *pipe);
+    class UsbSerial
+    {
+    private:
+        static Msg::Client msg_client;
+
+        static usb_serial_input receive(usb_serial_input previous_action,
+                                        char input);
+    public:
+        static void initialize(Msg::Pipe *pipe);
+
+        static void spin(void);
+    };
 
     void interface_read(uint32_t offset,
                         uint32_t length,
@@ -65,6 +100,5 @@ namespace Interface
                           uint16_t usStackDepth,
                           Msg::Pipe *pipe);
 }
-
 
 #endif /* _INTERFACE_H_ */

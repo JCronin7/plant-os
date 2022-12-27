@@ -3,19 +3,14 @@
 
 static TaskHandle_t xInterfaceTaskHdl;
 
-static char xSerialBuffer[USB_SERIAL_LINE_SIZE];
-
 static void task_entry(void *arg)
 {
     static TickType_t xPreviousWake = 0;
 
     while (true)
     {
-        if (Interface::usb_serial_getline(xSerialBuffer))
-        {
-        }
+        Interface::UsbSerial::spin();
         Interface::Webserver::spin();
-
         vTaskDelayUntil(&xPreviousWake, 10 / portTICK_PERIOD_MS);
     }
 }
@@ -59,8 +54,7 @@ BaseType_t Interface::initialize(UBaseType_t uxPriority,
 {
     BaseType_t status;
 
-    Webserver::initialize(80);
-    usb_serial_init(pipe);
+    UsbSerial::initialize(pipe);
     status = xTaskCreate(task_entry,
                          "INTERFACE",
                          usStackDepth,

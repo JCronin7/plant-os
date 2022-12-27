@@ -117,7 +117,7 @@ uint16_t Bh1750Sensor::read(void)
     Wire.requestFrom(xI2cAddress, sizeof(uint16_t));
     xReadData.xBytes.ucHi = Wire.read();
     xReadData.xBytes.ucLo = Wire.read();
-    //ack = Wire.endTransmission();
+    Wire.endTransmission();
 
     return xReadData.usData;
 }
